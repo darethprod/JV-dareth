@@ -1,0 +1,592 @@
+/* Reset et styles de base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    color: #ffffff;
+    overflow: hidden;
+    min-height: 100vh;
+}
+
+/* Canvas du jeu */
+#gameCanvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+    background: #0a0a1a;
+}
+
+/* Écrans de menu */
+.menu-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    transition: opacity 0.3s ease;
+}
+
+.menu-screen.hidden {
+    display: none;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.menu-screen.active {
+    display: flex;
+    opacity: 1;
+}
+
+/* Arrière-plan animé des menus */
+.menu-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        radial-gradient(circle at 20% 80%, rgba(25, 25, 60, 0.8) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(40, 20, 60, 0.8) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(15, 52, 96, 0.6) 0%, transparent 40%);
+    animation: bgPulse 8s ease-in-out infinite;
+}
+
+.menu-background.blur {
+    backdrop-filter: blur(10px);
+    background: rgba(0, 0, 0, 0.7);
+}
+
+@keyframes bgPulse {
+    0%, 100% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.05); opacity: 1; }
+}
+
+/* Contenu du menu */
+.menu-content {
+    position: relative;
+    z-index: 101;
+    text-align: center;
+    max-width: 800px;
+    padding: 40px;
+    animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Titre du jeu */
+.game-title {
+    font-size: 4rem;
+    font-weight: bold;
+    text-shadow: 
+        0 0 10px rgba(255, 255, 255, 0.8),
+        0 0 20px rgba(255, 255, 255, 0.6),
+        0 0 30px rgba(100, 150, 255, 0.8),
+        0 0 40px rgba(100, 150, 255, 0.6);
+    margin-bottom: 10px;
+    letter-spacing: 8px;
+    animation: titleGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes titleGlow {
+    from {
+        text-shadow: 
+            0 0 10px rgba(255, 255, 255, 0.8),
+            0 0 20px rgba(255, 255, 255, 0.6),
+            0 0 30px rgba(100, 150, 255, 0.8);
+    }
+    to {
+        text-shadow: 
+            0 0 15px rgba(255, 255, 255, 1),
+            0 0 30px rgba(255, 255, 255, 0.8),
+            0 0 45px rgba(100, 150, 255, 1),
+            0 0 60px rgba(100, 150, 255, 0.8);
+    }
+}
+
+.subtitle {
+    font-size: 1.5rem;
+    color: #a0a0c0;
+    margin-bottom: 40px;
+    letter-spacing: 3px;
+}
+
+/* Titres d'écran */
+.screen-title {
+    font-size: 2.5rem;
+    margin-bottom: 30px;
+    text-shadow: 0 0 20px rgba(100, 150, 255, 0.8);
+    letter-spacing: 5px;
+}
+
+.screen-title.game-over {
+    color: #ff4444;
+    text-shadow: 0 0 20px rgba(255, 68, 68, 0.8);
+}
+
+/* Boutons du menu */
+.menu-options {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+    margin: 30px 0;
+}
+
+.menu-btn {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+    border: 2px solid rgba(100, 150, 255, 0.5);
+    border-radius: 10px;
+    padding: 15px 40px;
+    min-width: 300px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.menu-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(100, 150, 255, 0.3), transparent);
+    transition: left 0.5s ease;
+}
+
+.menu-btn:hover {
+    border-color: rgba(100, 150, 255, 1);
+    background: linear-gradient(135deg, rgba(100, 150, 255, 0.2) 0%, rgba(100, 150, 255, 0.1) 100%);
+    transform: translateX(10px);
+    box-shadow: 0 0 20px rgba(100, 150, 255, 0.5);
+}
+
+.menu-btn:hover::before {
+    left: 100%;
+}
+
+.btn-text {
+    display: block;
+    font-size: 1.3rem;
+    font-weight: bold;
+    letter-spacing: 3px;
+    color: #ffffff;
+}
+
+.btn-subtext {
+    display: block;
+    font-size: 0.9rem;
+    color: #8080a0;
+    margin-top: 5px;
+}
+
+/* Indices de contrôles */
+.controller-hints {
+    margin-top: 40px;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    border: 1px solid rgba(100, 150, 255, 0.3);
+}
+
+.controller-hints p {
+    margin: 5px 0;
+    color: #a0a0c0;
+    font-size: 0.9rem;
+}
+
+/* Sélection de personnage */
+.character-container {
+    display: flex;
+    gap: 30px;
+    justify-content: center;
+    margin: 30px 0;
+}
+
+.character-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(100, 150, 255, 0.3);
+    border-radius: 15px;
+    padding: 20px;
+    width: 250px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.character-card.selected {
+    border-color: rgba(100, 150, 255, 1);
+    background: rgba(100, 150, 255, 0.1);
+    box-shadow: 0 0 30px rgba(100, 150, 255, 0.5);
+    transform: scale(1.05);
+}
+
+.character-card.locked {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.character-sprite {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 15px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 50%;
+    overflow: hidden;
+}
+
+.character-sprite img {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+    image-rendering: pixelated;
+}
+
+.locked-sprite {
+    font-size: 3rem;
+    color: #606080;
+}
+
+.char-name {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #ffffff;
+}
+
+.char-desc {
+    color: #a0a0c0;
+    margin-bottom: 15px;
+    font-size: 0.9rem;
+}
+
+.char-stats {
+    text-align: left;
+    margin-bottom: 15px;
+}
+
+.stat {
+    margin: 8px 0;
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.8rem;
+    color: #8080a0;
+    margin-bottom: 3px;
+}
+
+.stat-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.stat-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #6496ff, #a0c0ff);
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+.weapon-info {
+    font-size: 0.9rem;
+    color: #64ff64;
+    font-weight: bold;
+}
+
+.select-hints, .back-hint {
+    margin-top: 20px;
+    color: #8080a0;
+    font-size: 0.9rem;
+}
+
+/* Grille de contrôles */
+.controls-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 30px;
+    margin: 30px 0;
+}
+
+.control-section {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(100, 150, 255, 0.3);
+    border-radius: 10px;
+    padding: 20px;
+    text-align: left;
+}
+
+.control-section h3 {
+    font-size: 1.3rem;
+    margin-bottom: 15px;
+    color: #6496ff;
+}
+
+.control-item {
+    display: flex;
+    justify-content: space-between;
+    margin: 10px 0;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.control-item:last-child {
+    border-bottom: none;
+}
+
+.control-key {
+    font-weight: bold;
+    color: #ffffff;
+}
+
+.control-action {
+    color: #a0a0c0;
+}
+
+/* HUD */
+#hud {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 50;
+    display: none;
+}
+
+#hud:not(.hidden) {
+    display: block;
+}
+
+.health-bars-container {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.player-health {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 10px 15px;
+    border-radius: 10px;
+    border: 2px solid rgba(100, 150, 255, 0.5);
+}
+
+.health-frame {
+    width: 60px;
+    height: 60px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.health-sprite {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    image-rendering: pixelated;
+}
+
+.player-info {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.player-name {
+    font-weight: bold;
+    color: #ffffff;
+    font-size: 1rem;
+}
+
+.player-wave {
+    color: #a0a0c0;
+    font-size: 0.8rem;
+}
+
+.wave-info {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 15px 30px;
+    border-radius: 10px;
+    border: 2px solid rgba(255, 100, 100, 0.5);
+}
+
+.wave-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.wave-label {
+    font-size: 0.9rem;
+    color: #a0a0c0;
+    letter-spacing: 3px;
+}
+
+.wave-number {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #ff6464;
+    text-shadow: 0 0 10px rgba(255, 100, 100, 0.8);
+}
+
+.enemies-left {
+    margin-top: 10px;
+    color: #ffffff;
+    font-size: 1rem;
+}
+
+.timer {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 15px 25px;
+    border-radius: 10px;
+    border: 2px solid rgba(100, 255, 100, 0.5);
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #64ff64;
+    font-family: 'Courier New', monospace;
+}
+
+/* Image de vague complétée */
+.wave-complete-img {
+    max-width: 300px;
+    margin-bottom: 20px;
+    image-rendering: pixelated;
+}
+
+/* Statistiques finales */
+.final-stats {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(100, 150, 255, 0.3);
+    border-radius: 10px;
+    padding: 20px;
+    margin: 20px 0;
+    text-align: left;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat-row:last-child {
+    border-bottom: none;
+}
+
+.stat-value {
+    font-weight: bold;
+    color: #6496ff;
+}
+
+/* Récompenses de vague */
+.wave-rewards {
+    margin: 20px 0;
+}
+
+.reward-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: rgba(255, 215, 0, 0.1);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 8px;
+    padding: 15px;
+}
+
+.reward-icon {
+    font-size: 2rem;
+}
+
+.reward-text {
+    font-size: 1.1rem;
+    color: #ffd700;
+}
+
+.next-wave-info {
+    margin-top: 20px;
+    font-size: 1.2rem;
+    color: #a0a0c0;
+}
+
+#next-wave-timer {
+    color: #64ff64;
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+/* Utilitaires */
+.hidden {
+    display: none !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .game-title {
+        font-size: 2.5rem;
+        letter-spacing: 4px;
+    }
+    
+    .menu-content {
+        padding: 20px;
+    }
+    
+    .character-container {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .controls-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .health-bars-container {
+        top: 10px;
+        left: 10px;
+    }
+}
