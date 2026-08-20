@@ -346,27 +346,26 @@ function startWave(number) {
   game.wave = number; game.enemies = []; game.bullets = []; game.drops = []; game.damageTexts = []; game.banner = 1.7;
   const living = game.players.filter(p => p.alive);
   for (const player of game.players) { player.hp = player.stats.maxHp; player.alive = true; player.salvo = 'ready'; player.salvoTimer = 0; player.waveBurstBonus = 0; player.passiveTimer = 3; player.laserTarget = null; player.laserTimer = 0; }
-  // Infinite progression comes from the scaling enemy stats; keep the random horde size bounded for stable local co-op performance.
-  const count = Math.min(80, 12 + number * 4 + Math.floor(Math.random() * (5 + number * 2)));
-  game.waveEnemyTotal = count;
-  for (let i = 0; i < count; i++) spawnSlime(i, count);
+  // Wave lasts 90 seconds with continuous spawning
+  game.waveDuration = 90;
+  game.waveTimer = game.waveDuration;
+  game.waveEnemyTotal = 0;
+  game.spawnTimer = 0;
+  game.spawnInterval = Math.max(0.15, 1.2 - number * 0.05); // Spawn rate increases with wave number
   showHud(); sound.tone(170, 300, .18, 'triangle', .035);
 }
-function spawnSlime(index, count) {
-  // Staggered lanes keep arrivals readable instead of spawning one overlapping blob.
-  const laneCount = Math.min(10, Math.max(5, Math.ceil(Math.sqrt(count))));
-  const lane = index % laneCount;
-  const row = Math.floor(index / laneCount);
-  const spread = (lane / Math.max(1, laneCount - 1) - .5) * (W + 180);
-  const x = clamp(game.camera.x + spread + (Math.random() - .5) * 34, 30, WORLD.width - 30);
-  const y = clamp(game.camera.y - H / 2 - 105 - row * 58 - Math.random() * 34, 30, WORLD.height - 30);
+function spawnSlime() {
+  // Spawn enemies around the camera edges at varied positions to prevent stacking
+  const angle = Math.random() * Math.PI * 2;
+  const distance = Math.max(W, H) / 2 + 80 + Math.random() * 60;
+  const x = clamp(game.camera.x + Math.cos(angle) * distance, 40, WORLD.width - 40);
+  const y = clamp(game.camera.y + Math.sin(angle) * distance, 40, WORLD.height - 40);
   const waveScale = game.wave - 1;
   const maxHp = SLIME.maxHp + waveScale * 9 + Math.floor(Math.random() * (4 + waveScale * 2));
   const damage = SLIME.damage + Math.floor(waveScale * .8) + (Math.random() > .78 ? 1 : 0);
   const speed = SLIME.speed + game.wave * 5 + Math.random() * (9 + waveScale * 2);
-  const frontliner = index % 4 === 0;
-  const formationRadius = frontliner ? 40 + Math.random() * 8 : 76 + (index % 3) * 27 + Math.random() * 12;
-  game.enemies.push({ x, y, radius: SLIME.radius, hp: maxHp, maxHp, damage, speed, attackTimer: 0, flash: 0, dead: false, targetSlot: index % Math.max(1, game.players.length), formationAngle: (lane / laneCount) * Math.PI * 2 + (Math.random() - .5) * .32, formationRadius });
+  game.enemies.push({ x, y, radius: SLIME.radius, hp: maxHp, maxHp, damage, speed, attackTimer: 0, flash: 0, dead: false });
+  game.waveEnemyTotal++;
 }
 
 function showHud() {
@@ -385,8 +384,8 @@ function updateHud() {
     const healthState = health.percentage <= 28 ? 'critical' : health.percentage <= 55 ? 'warning' : '';
     return `<div class="hud-card ${p.alive ? '' : 'dead'}"><div class="hud-title"><span class="player-label">P${i + 1} · ${character.name.toUpperCase()}</span><span class="scrap">✦ ${p.scrap}</span></div><div class="health-line"><span>HEALTH</span><b>${health.current} / ${health.max}</b></div><div class="hp-bar ${healthState}" aria-label="Health ${health.current} out of ${health.max}"><i style="width:${health.percentage}%"></i></div>${special}<br>${p.alive ? mode : '<span class="reload">DOWN</span>'}</div>`;
   }).join('');
-  byId('wave-hud').textContent = `WAVE ${String(game.wave).padStart(2, '0')} · ∞`;
-  byId('enemy-hud').textContent = `${game.enemies.length} SLIME${game.enemies.length !== 1 ? 'S' : ''} REMAINING`;
+  byId('wave-hud').textContent = `WAVE ${String(game.wave).padStart(2, '0')} · ${Math.ceil(game.waveTimer)}s`;
+  byId('enemy-hud').textContent = `${game.enemies.length} SLIME${game.enemies.length !== 1 ? 'S' : ''} · ${game.waveEnemyTotal} TOTAL`;
   const banner = byId('wave-banner'); if (banner) banner.innerHTML = game.banner > 0 ? `<span class="wave-banner">WAVE ${game.wave}</span>` : '';
 }
 
@@ -627,12 +626,28 @@ function updateGame(dt) {
   const targetX = average.x / living.length, targetY = average.y / living.length;
   game.camera.x += (targetX - game.camera.x) * Math.min(1, dt * 5); game.camera.y += (targetY - game.camera.y) * Math.min(1, dt * 5);
   game.camera.x = clamp(game.camera.x, W / 2, WORLD.width - W / 2); game.camera.y = clamp(game.camera.y, H / 2, WORLD.height - H / 2);
+  
+  // Update wave timer and spawn enemies continuously
+  if (game.waveTimer > 0) {
+    game.waveTimer -= dt;
+    game.spawnTimer -= dt;
+    if (game.spawnTimer <= 0 && game.waveTimer > 0) {
+      spawnSlime();
+      game.spawnTimer = game.spawnInterval;
+    }
+  } else if (!game.enemies.length && !game.drops.length) {
+    showUpgradeSelection();
+  }
+  
   for (const bullet of game.bullets) { const traveled = Math.hypot(bullet.vx, bullet.vy) * dt; bullet.x += bullet.vx * dt; bullet.y += bullet.vy * dt; bullet.traveled += traveled; bullet.life -= dt; }
   for (const enemy of game.enemies) {
     if (enemy.dead) continue;
     const target = living.reduce((near, player) => distance(enemy, player) < distance(enemy, near) ? player : near, living[0]);
     const dx = target.x - enemy.x, dy = target.y - enemy.y, length = Math.hypot(dx, dy) || 1;
-    if (length > enemy.radius + target.radius - 4) { enemy.x += dx / length * enemy.speed * dt; enemy.y += dy / length * enemy.speed * dt; }
+    // Smart movement: maintain some distance and avoid stacking
+    const desiredDistance = enemy.radius + target.radius + 8;
+    if (length > desiredDistance) { enemy.x += dx / length * enemy.speed * dt; enemy.y += dy / length * enemy.speed * dt; }
+    else if (length < desiredDistance - 5) { enemy.x -= dx / length * enemy.speed * 0.3 * dt; enemy.y -= dy / length * enemy.speed * 0.3 * dt; }
     enemy.attackTimer -= dt; enemy.flash = Math.max(0, enemy.flash - dt);
     if (length < enemy.radius + target.radius && enemy.attackTimer <= 0) { hurtPlayer(target, enemy.damage); enemy.attackTimer = Math.max(.48, .95 - game.wave * .015); }
     for (const bullet of game.bullets) if (bullet.life > 0 && enemy.hp > 0 && distance(enemy, bullet) < enemy.radius + bullet.radius) { enemy.hp -= bullet.damage; enemy.flash = .08; bullet.life = 0; game.damageTexts.push({ x: enemy.x + (Math.random() - .5) * 11, y: enemy.y - 22, value: Math.round(bullet.damage), critical: bullet.critical, life: .6, vy: bullet.critical ? -43 : -34 }); sound.hit(); if (enemy.hp <= 0) killEnemy(enemy, bullet.owner); }
@@ -650,7 +665,7 @@ function updateGame(dt) {
   for (const text of game.damageTexts) { text.y += text.vy * dt; text.life -= dt; }
   game.enemies = game.enemies.filter(e => !e.dead); game.bullets = game.bullets.filter(b => b.life > 0 && b.traveled < b.range && b.x >= 0 && b.x <= WORLD.width && b.y >= 0 && b.y <= WORLD.height); game.drops = game.drops.filter(d => d.life > 0); game.particles = game.particles.filter(p => p.life > 0); game.damageTexts = game.damageTexts.filter(text => text.life > 0);
   game.banner = Math.max(0, game.banner - dt); game.shake = Math.max(0, game.shake - dt);
-  if (!game.enemies.length && !game.drops.length) showUpgradeSelection(); else updateHud();
+  updateHud();
 }
 function showDefeat() {
   state = 'defeat'; resetEdges(); sound.tone(130, 45, .5, 'sawtooth', .055);
