@@ -648,6 +648,11 @@ function updateGame(dt) {
     }
   } else if (!game.enemies.length && !game.drops.length) {
     showUpgradeSelection();
+  } else if (game.waveTimer <= 0) {
+    // Wave time expired - force end wave even if enemies remain
+    game.enemies = [];
+    game.drops = [];
+    showUpgradeSelection();
   }
   
   for (const bullet of game.bullets) { const traveled = Math.hypot(bullet.vx, bullet.vy) * dt; bullet.x += bullet.vx * dt; bullet.y += bullet.vy * dt; bullet.traveled += traveled; bullet.life -= dt; }
