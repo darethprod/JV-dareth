@@ -2,12 +2,21 @@
 const canvas = document.querySelector('#game');
 const ctx = canvas.getContext('2d', { alpha: false });
 const ui = document.querySelector('#ui');
-const W = canvas.width;
-const H = canvas.height;
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+let W = canvas.width;
+let H = canvas.height;
 ctx.imageSmoothingEnabled = false;
 ctx.webkitImageSmoothingEnabled = false;
 
 const WORLD = { width: 800, height: 600 };
+const ZOOM = Math.min(W / WORLD.width, H / WORLD.height) * 0.75;
 const JEAN_BERNARD = {
   id: 'jean-bernard', name: 'Jean Bernard', title: 'Burst Rifleman', maxHp: 30,
   damage: 30, resistance: 0, burstsPerSecond: 1, crit: 0, moveSpeed: 230, range: 230,
@@ -682,9 +691,14 @@ function drawMenuBackdrop() {
 }
 function drawArena() {
   ctx.fillStyle = '#243d2c'; ctx.fillRect(0, 0, W, H);
-  const offsetX = Math.round(W / 2 - game.camera.x + (game.shake ? (Math.random() - .5) * 6 : 0));
-  const offsetY = Math.round(H / 2 - game.camera.y + (game.shake ? (Math.random() - .5) * 6 : 0));
-  ctx.save(); ctx.translate(offsetX, offsetY);
+  const baseOffsetX = W / 2 - game.camera.x + (game.shake ? (Math.random() - .5) * 6 : 0);
+  const baseOffsetY = H / 2 - game.camera.y + (game.shake ? (Math.random() - .5) * 6 : 0);
+  const offsetX = Math.round(baseOffsetX * ZOOM);
+  const offsetY = Math.round(baseOffsetY * ZOOM);
+  ctx.save();
+  ctx.translate(W / 2, H / 2);
+  ctx.scale(ZOOM, ZOOM);
+  ctx.translate(-W / 2 + baseOffsetX, -H / 2 + baseOffsetY);
   const firstX = Math.floor((game.camera.x - W / 2) / 64) * 64, lastX = game.camera.x + W / 2 + 64;
   const firstY = Math.floor((game.camera.y - H / 2) / 64) * 64, lastY = game.camera.y + H / 2 + 64;
   for (let x = firstX; x < lastX; x += 64) for (let y = firstY; y < lastY; y += 64) { ctx.fillStyle = ((x / 64 + y / 64) & 1) ? '#28452f' : '#2b4932'; ctx.fillRect(x, y, 64, 64); ctx.fillStyle = '#315438'; ctx.fillRect(x + 7, y + 12, 3, 3); ctx.fillRect(x + 43, y + 48, 2, 2); }
