@@ -16,10 +16,10 @@
 }
 
 * { box-sizing: border-box; }
-body { min-width: 320px; min-height: 100vh; margin: 0; display: grid; place-items: center; overflow: hidden; background: radial-gradient(circle at 50% 30%, #182538, #070b12 67%); }
-#game-shell { position: relative; width: min(100vw, 177.7778vh); aspect-ratio: 16 / 9; overflow: hidden; background: #101923; box-shadow: 0 22px 70px #0009; }
-canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
-#ui { position: absolute; inset: 0; }
+body { min-width: 320px; min-height: 100vh; margin: 0; display: block; overflow: hidden; background: radial-gradient(circle at 50% 30%, #182538, #070b12 67%); }
+#game-shell { position: fixed; inset: 0; width: 100vw; height: 100vh; overflow: hidden; background: #101923; }
+canvas { display: block; width: 100vw; height: 100vh; image-rendering: pixelated; image-rendering: crisp-edges; }
+#ui { position: fixed; inset: 0; pointer-events: none; }
 
 .screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 30px; overflow: auto; color: var(--text); background: linear-gradient(130deg, #080d15f2, #101b28eb); text-align: center; }
 .eyebrow { color: var(--cyan); font-size: 11px; font-weight: 800; letter-spacing: 2.3px; text-transform: uppercase; }
