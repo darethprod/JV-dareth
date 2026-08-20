@@ -19,7 +19,7 @@ const PORMANOVE = {
   laserTick: .20, sprite: 'assets/sprites/characters/pormanove.png',
 };
 const CHARACTERS = [JEAN_BERNARD, PORMANOVE];
-const SLIME = { maxHp: 40, damage: 5, speed: 76, radius: 23, sprite: 'assets/sprites/enemies/slime.png' };
+const SLIME = { maxHp: 40, damage: 5, speed: 76, radius: 14, sprite: 'assets/sprites/enemies/slime.png' };
 const UPGRADES = [
   { id: 'maxHp', icon: '♥', name: 'Max HP', detail: '+5 maximum health', base: 8 },
   { id: 'damage', icon: '✦', name: 'Damage', detail: '+5 damage per shot', base: 10 },
@@ -53,7 +53,7 @@ function resistanceReduction(resistance) { return (1 - resistanceMultiplier(resi
 function damageTaken(rawDamage, resistance) { return Math.max(1, Math.round(rawDamage * resistanceMultiplier(resistance))); }
 function laserEvolution(player) {
   const stacks = player?.slimeStacks || 0;
-  if (stacks >= 100) return { tier: 'overload', label: 'OVERLOAD · AREA BEAM', pierces: true, beamRadius: 65, beamMultiplier: 2.5, impactRadius: 180, impactMultiplier: 2.0, outerWidth: 140, coreWidth: 55 };
+  if (stacks >= 100) return { tier: 'overload', label: 'OVERLOAD · AREA BEAM', pierces: true, beamRadius: 65, beamMultiplier: 1.8, impactRadius: 180, impactMultiplier: 1.5, outerWidth: 140, coreWidth: 55 };
   if (stacks >= 25) return { tier: 'piercing', label: 'PIERCING BEAM', pierces: true, beamRadius: 18, beamMultiplier: 1.15, impactRadius: 0, impactMultiplier: 0, outerWidth: 45, coreWidth: 18 };
   return { tier: 'standard', label: 'FOCUSED BEAM', pierces: false, beamRadius: 0, beamMultiplier: 1, impactRadius: 0, impactMultiplier: 0, outerWidth: 15, coreWidth: 7 };
 }
@@ -211,10 +211,9 @@ function passiveDescription(player) {
     const stackDamage = player?.stackDamageBonus || 0;
     const evolution = laserEvolution(player);
     return `<div class="passive-description">
-      <p>Attack Speed bonuses become <b>Damage</b> instead <span class="ratio-badge"><i>↯ → ✦</i> 1 : 10</span></p>
-      <p>Slime stacks: <b>${stacks}</b>. Gain <b>+2 Damage</b> every 10 stacks <span class="ratio-badge"><i>✦</i> ${nextStack} to next</span></p>
-      <p>Current stack damage: <b>+${stackDamage} Damage</b>.</p>
-      <p>Laser evolution: <b>${evolution.label}</b>. <b>25</b> stacks pierce; <b>100</b> stacks create a huge area beam.</p>
+      <p>Gain <b>+2 Damage</b> every 10 slime kills <span class="ratio-badge"><i>✦</i> ${nextStack} to next</span></p>
+      <p>Slime stacks: <b>${stacks}</b>. Current bonus: <b>+${stackDamage} Damage</b>.</p>
+      <p>Laser evolution: <b>${evolution.label}</b>. <b>25</b> stacks = piercing; <b>100</b> stacks = huge area beam.</p>
     </div>`;
   }
   const critBonus = stats.crit * .20;
@@ -264,8 +263,9 @@ function upgradeDetailHtml(player, upgrade) {
     rows = `<p><span>Resistance</span><b>${stats.resistance} → ${nextResistance}</b></p><p><span>100 raw damage received</span><b>${damageTaken(100, stats.resistance)} → ${damageTaken(100, nextResistance)}</b></p><p><span>Damage reduction</span><b>${resistanceReduction(nextResistance).toFixed(1)}%</b></p>`;
   } else if (upgrade.id === 'burstsPerSecond') {
     if (laser) {
-      value = `${stats.damage} <em>→</em> ${stats.damage + 2}`;
-      rows = `<p><span>Attack Speed bonus</span><b>converted</b></p><p><span>Laser damage / sec</span><b>${stats.damage} → ${stats.damage + 2}</b></p><p><span>Critical laser / sec</span><b>${stats.damage * 2} → ${(stats.damage + 2) * 2}</b></p>`;
+      // Pormanove cannot buy Attack Speed - show disabled info
+      value = `<span style="color:#c66">NOT AVAILABLE</span>`;
+      rows = `<p><span>Attack Speed</span><b>not available for Pormanove</b></p><p><span>Laser damage / sec</span><b>${stats.damage}</b></p><p><span>Note</span><b>Pormanove can only buy Damage directly</b></p>`;
     } else {
       const speed = effectiveBurstsPerSecond(player);
       const nextSpeed = speed + .20;
@@ -397,9 +397,14 @@ function applyUpgrade(player, upgrade) {
   if (upgrade.id === 'maxHp') { player.stats.maxHp += 5; player.hp = Math.min(player.stats.maxHp, player.hp + 5); }
   if (upgrade.id === 'damage') player.stats.damage += 5;
   if (upgrade.id === 'resistance') player.stats.resistance += 1;
+  // Attack Speed upgrade only for Jean Bernard, not for Pormanove (laser character)
   if (upgrade.id === 'burstsPerSecond') {
-    if (isLaserCharacter(player)) { player.stats.damage += 2; }
-    else player.stats.burstsPerSecond = +(player.stats.burstsPerSecond + .2).toFixed(2);
+    if (isLaserCharacter(player)) { 
+      // Pormanove cannot buy attack speed - block the purchase
+      sound.tone(100, 75, .08, 'square', .025); 
+      return false; 
+    }
+    player.stats.burstsPerSecond = +(player.stats.burstsPerSecond + .2).toFixed(2);
   }
   if (upgrade.id === 'crit') player.stats.crit += 5;
   if (upgrade.id === 'moveSpeed') player.stats.moveSpeed += 15;
@@ -420,14 +425,15 @@ function renderUpgradeSelection() {
   const character = getCharacter(player);
   const cardHtml = UPGRADES.map((upgrade, index) => {
     const unavailable = player.freeUpgradeClaimed;
-    const converted = isLaserCharacter(player) && upgrade.id === 'burstsPerSecond';
+    const laserChar = isLaserCharacter(player);
+    const attackSpeedBlocked = laserChar && upgrade.id === 'burstsPerSecond';
     const name = upgrade.name;
-    const detail = converted ? '+2 laser damage (converted)' : upgrade.detail;
-    return `<button class="upgrade ${unavailable ? 'claimed' : ''} ${player.shopSelection === index ? 'focused' : ''} ${upgradeDetailIndex === index ? 'inspected' : ''}" data-upgrade="${upgrade.id}" data-upgrade-index="${index}" ${unavailable ? 'disabled' : ''}><span class="icon">${upgrade.icon}</span><h3>${name}</h3><p>${detail}</p><span class="reward">FREE PICK</span></button>`;
+    const detail = attackSpeedBlocked ? 'Not available for Pormanove' : upgrade.detail;
+    return `<button class="upgrade ${unavailable ? 'claimed' : ''} ${attackSpeedBlocked ? 'blocked' : ''} ${player.shopSelection === index ? 'focused' : ''} ${upgradeDetailIndex === index ? 'inspected' : ''}" data-upgrade="${upgrade.id}" data-upgrade-index="${index}" ${unavailable || attackSpeedBlocked ? 'disabled' : ''}><span class="icon">${upgrade.icon}</span><h3>${name}</h3><p>${detail}</p><span class="reward">FREE PICK</span></button>`;
   }).join('');
   const pickStatus = player.freeUpgradeClaimed ? `Selected: ${player.lastUpgrade}` : 'Choose one free upgrade for this wave.';
   const shopHelp = isLaserCharacter(player)
-    ? 'Attack Speed bonuses are converted to laser damage for Pormanove.'
+    ? 'Attack Speed is NOT available for Pormanove. Buy Damage directly instead.'
     : 'Attack Speed shortens the delay before Jean Bernard starts his next two-shot burst.';
   const roster = game.players.map((p, index) => { const rosterCharacter = getCharacter(p); return `<article class="co-op-player ${p.freeUpgradeClaimed ? 'done' : ''} ${index === shopActivePlayer ? 'active' : ''}"><img src="${rosterCharacter.sprite}" alt=""><div><strong>Player ${index + 1} · ${rosterCharacter.name}</strong><small>${p.freeUpgradeClaimed ? `Selected · ${p.lastUpgrade}` : 'Choosing upgrade'}</small></div><span>${p.freeUpgradeClaimed ? 'READY' : 'PICK 1'}</span></article>`; }).join('');
   ui.innerHTML = `
@@ -612,7 +618,12 @@ function killEnemy(enemy, owner) {
   if (enemy.dead) return; enemy.dead = true; sound.kill();
   if (owner && isLaserCharacter(owner)) {
     owner.slimeStacks++;
-    if (owner.slimeStacks % 10 === 0) { owner.stats.damage += 2; owner.stackDamageBonus += 2; sound.tone(330, 900, .22, 'triangle', .05); }
+    // Gain 1 stack every 10 slimes instead of 1 per slime
+    if (owner.slimeStacks % 10 === 0) { 
+      owner.stats.damage += 2; 
+      owner.stackDamageBonus += 2; 
+      sound.tone(330, 900, .22, 'triangle', .05); 
+    }
   }
   // Let the material pickups visibly travel to their owner, including after the final kill.
   for (let i = 0; i < 3; i++) game.drops.push({ x: enemy.x + (Math.random() - .5) * 18, y: enemy.y + (Math.random() - .5) * 18, value: 1, owner, life: 3 });
@@ -644,10 +655,9 @@ function updateGame(dt) {
     if (enemy.dead) continue;
     const target = living.reduce((near, player) => distance(enemy, player) < distance(enemy, near) ? player : near, living[0]);
     const dx = target.x - enemy.x, dy = target.y - enemy.y, length = Math.hypot(dx, dy) || 1;
-    // Smart movement: maintain some distance and avoid stacking
-    const desiredDistance = enemy.radius + target.radius + 8;
-    if (length > desiredDistance) { enemy.x += dx / length * enemy.speed * dt; enemy.y += dy / length * enemy.speed * dt; }
-    else if (length < desiredDistance - 5) { enemy.x -= dx / length * enemy.speed * 0.3 * dt; enemy.y -= dy / length * enemy.speed * 0.3 * dt; }
+    // Simple movement: go directly to player, no backstep
+    enemy.x += dx / length * enemy.speed * dt; 
+    enemy.y += dy / length * enemy.speed * dt;
     enemy.attackTimer -= dt; enemy.flash = Math.max(0, enemy.flash - dt);
     if (length < enemy.radius + target.radius && enemy.attackTimer <= 0) { hurtPlayer(target, enemy.damage); enemy.attackTimer = Math.max(.48, .95 - game.wave * .015); }
     for (const bullet of game.bullets) if (bullet.life > 0 && enemy.hp > 0 && distance(enemy, bullet) < enemy.radius + bullet.radius) { enemy.hp -= bullet.damage; enemy.flash = .08; bullet.life = 0; game.damageTexts.push({ x: enemy.x + (Math.random() - .5) * 11, y: enemy.y - 22, value: Math.round(bullet.damage), critical: bullet.critical, life: .6, vy: bullet.critical ? -43 : -34 }); sound.hit(); if (enemy.hp <= 0) killEnemy(enemy, bullet.owner); }
