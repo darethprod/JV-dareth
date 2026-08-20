@@ -53,8 +53,8 @@ function resistanceReduction(resistance) { return (1 - resistanceMultiplier(resi
 function damageTaken(rawDamage, resistance) { return Math.max(1, Math.round(rawDamage * resistanceMultiplier(resistance))); }
 function laserEvolution(player) {
   const stacks = player?.slimeStacks || 0;
-  if (stacks >= 100) return { tier: 'overload', label: 'OVERLOAD · AREA BEAM', pierces: true, beamRadius: 32, beamMultiplier: 1.35, impactRadius: 122, impactMultiplier: 1.6, outerWidth: 92, coreWidth: 34 };
-  if (stacks >= 50) return { tier: 'piercing', label: 'PIERCING BEAM', pierces: true, beamRadius: 9, beamMultiplier: 1, impactRadius: 0, impactMultiplier: 0, outerWidth: 30, coreWidth: 11 };
+  if (stacks >= 100) return { tier: 'overload', label: 'OVERLOAD · AREA BEAM', pierces: true, beamRadius: 65, beamMultiplier: 2.5, impactRadius: 180, impactMultiplier: 2.0, outerWidth: 140, coreWidth: 55 };
+  if (stacks >= 25) return { tier: 'piercing', label: 'PIERCING BEAM', pierces: true, beamRadius: 18, beamMultiplier: 1.15, impactRadius: 0, impactMultiplier: 0, outerWidth: 45, coreWidth: 18 };
   return { tier: 'standard', label: 'FOCUSED BEAM', pierces: false, beamRadius: 0, beamMultiplier: 1, impactRadius: 0, impactMultiplier: 0, outerWidth: 15, coreWidth: 7 };
 }
 function pointSegmentDistance(point, fromX, fromY, toX, toY) {
@@ -214,7 +214,7 @@ function passiveDescription(player) {
       <p>Attack Speed bonuses become <b>Damage</b> instead <span class="ratio-badge"><i>↯ → ✦</i> 1 : 10</span></p>
       <p>Slime stacks: <b>${stacks}</b>. Gain <b>+2 Damage</b> every 10 stacks <span class="ratio-badge"><i>✦</i> ${nextStack} to next</span></p>
       <p>Current stack damage: <b>+${stackDamage} Damage</b>.</p>
-      <p>Laser evolution: <b>${evolution.label}</b>. <b>50</b> stacks pierce; <b>100</b> stacks create a huge area beam.</p>
+      <p>Laser evolution: <b>${evolution.label}</b>. <b>25</b> stacks pierce; <b>100</b> stacks create a huge area beam.</p>
     </div>`;
   }
   const critBonus = stats.crit * .20;
@@ -569,8 +569,29 @@ function updatePlayer(player, dt) {
   if (nearest && player.salvo === 'ready') { fireBullet(player, false); player.salvo = 'second'; player.salvoTimer = JEAN_BERNARD.burstGap; }
 }
 function dealLaserDamage(player, enemy) {
+  const evolution = laserEvolution(player);
   const critical = Math.random() * 100 < player.stats.crit;
-  const damage = player.stats.damage * PORMANOVE.laserTick * (critical ? 2 : 1);
+  let damage = player.stats.damage * PORMANOVE.laserTick * (critical ? 2 : 1) * evolution.beamMultiplier;
+  
+  if (evolution.pierces) {
+    const enemiesInLine = game.enemies.filter(e => !e.dead && e !== enemy && distance(e, enemy) < 80);
+    for (const extra of enemiesInLine) {
+      extra.hp -= damage; extra.flash = .08;
+      game.damageTexts.push({ x: extra.x + (Math.random() - .5) * 10, y: extra.y - 24, value: Math.max(1, Math.round(damage)), critical, life: .52, vy: critical ? -46 : -35 });
+      if (extra.hp <= 0) killEnemy(extra, player);
+    }
+  }
+  
+  if (evolution.tier === 'overload') {
+    const areaEnemies = game.enemies.filter(e => !e.dead && distance(e, enemy) < evolution.impactRadius);
+    for (const area of areaEnemies) {
+      const areaDamage = damage * evolution.impactMultiplier;
+      area.hp -= areaDamage; area.flash = .08;
+      game.damageTexts.push({ x: area.x + (Math.random() - .5) * 10, y: area.y - 24, value: Math.max(1, Math.round(areaDamage)), critical, life: .52, vy: critical ? -46 : -35 });
+      if (area.hp <= 0) killEnemy(area, player);
+    }
+  }
+  
   enemy.hp -= damage; enemy.flash = .08;
   game.damageTexts.push({ x: enemy.x + (Math.random() - .5) * 10, y: enemy.y - 24, value: Math.max(1, Math.round(damage)), critical, life: .52, vy: critical ? -46 : -35 });
   sound.tone(critical ? 510 : 360, critical ? 690 : 470, .035, 'sine', .014);
@@ -709,6 +730,7 @@ function drawAttackRange(player) {
 }
 function drawLaser(player) {
   if (!player.alive || !isLaserCharacter(player) || !player.laserTarget || player.laserTarget.dead) return;
+  const evolution = laserEvolution(player);
   const fromX = Math.round(player.x);
   const fromY = Math.round(player.y + 10);
   const toX = Math.round(player.laserTarget.x);
@@ -716,14 +738,35 @@ function drawLaser(player) {
   const pulse = .72 + Math.sin(performance.now() / 75) * .18;
   ctx.save();
   ctx.lineCap = 'round';
-  ctx.globalAlpha = .24 * pulse;
-  ctx.strokeStyle = '#b46cff'; ctx.lineWidth = 15;
-  ctx.beginPath(); ctx.moveTo(fromX, fromY); ctx.lineTo(toX, toY); ctx.stroke();
-  ctx.globalAlpha = .82;
-  ctx.strokeStyle = '#9d5cff'; ctx.lineWidth = 7;
-  ctx.beginPath(); ctx.moveTo(fromX, fromY); ctx.lineTo(toX, toY); ctx.stroke();
+  
+  if (evolution.tier === 'overload') {
+    ctx.globalAlpha = .35 * pulse;
+    ctx.strokeStyle = '#ff4d4d'; ctx.lineWidth = evolution.outerWidth;
+    ctx.beginPath(); ctx.moveTo(fromX, fromY); ctx.lineTo(toX, toY); ctx.stroke();
+    ctx.globalAlpha = .55;
+    ctx.strokeStyle = '#ff8800'; ctx.lineWidth = evolution.coreWidth;
+    ctx.beginPath(); ctx.moveTo(fromX, fromY); ctx.lineTo(toX, toY); ctx.stroke();
+    ctx.globalAlpha = .25;
+    ctx.fillStyle = '#ffaa00';
+    ctx.beginPath(); ctx.arc(player.laserTarget.x, player.laserTarget.y, evolution.impactRadius, 0, Math.PI * 2); ctx.fill();
+  } else if (evolution.tier === 'piercing') {
+    ctx.globalAlpha = .28 * pulse;
+    ctx.strokeStyle = '#a65ad7'; ctx.lineWidth = evolution.outerWidth;
+    ctx.beginPath(); ctx.moveTo(fromX, fromY); ctx.lineTo(toX, toY); ctx.stroke();
+    ctx.globalAlpha = .85;
+    ctx.strokeStyle = '#d48aff'; ctx.lineWidth = evolution.coreWidth;
+    ctx.beginPath(); ctx.moveTo(fromX, fromY); ctx.lineTo(toX, toY); ctx.stroke();
+  } else {
+    ctx.globalAlpha = .24 * pulse;
+    ctx.strokeStyle = '#b46cff'; ctx.lineWidth = 15;
+    ctx.beginPath(); ctx.moveTo(fromX, fromY); ctx.lineTo(toX, toY); ctx.stroke();
+    ctx.globalAlpha = .82;
+    ctx.strokeStyle = '#9d5cff'; ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.moveTo(fromX, fromY); ctx.lineTo(toX, toY); ctx.stroke();
+  }
+  
   ctx.globalAlpha = 1;
-  ctx.strokeStyle = '#f3d8ff'; ctx.lineWidth = 2;
+  ctx.strokeStyle = '#fff0ff'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(fromX, fromY); ctx.lineTo(toX, toY); ctx.stroke();
   ctx.fillStyle = '#fff0ff'; ctx.beginPath(); ctx.arc(fromX, fromY, 4, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
