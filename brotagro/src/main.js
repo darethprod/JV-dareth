@@ -7,7 +7,7 @@ const H = canvas.height;
 ctx.imageSmoothingEnabled = false;
 ctx.webkitImageSmoothingEnabled = false;
 
-const WORLD = { width: 3200, height: 2200 };
+const WORLD = { width: 800, height: 600 };
 const JEAN_BERNARD = {
   id: 'jean-bernard', name: 'Jean Bernard', title: 'Burst Rifleman', maxHp: 30,
   damage: 30, resistance: 0, burstsPerSecond: 1, crit: 0, moveSpeed: 230, range: 230,
@@ -53,8 +53,8 @@ function resistanceReduction(resistance) { return (1 - resistanceMultiplier(resi
 function damageTaken(rawDamage, resistance) { return Math.max(1, Math.round(rawDamage * resistanceMultiplier(resistance))); }
 function laserEvolution(player) {
   const stacks = player?.slimeStacks || 0;
-  if (stacks >= 100) return { tier: 'overload', label: 'OVERLOAD · AREA BEAM', pierces: true, beamRadius: 65, beamMultiplier: 1.8, impactRadius: 180, impactMultiplier: 1.5, outerWidth: 140, coreWidth: 55 };
-  if (stacks >= 25) return { tier: 'piercing', label: 'PIERCING BEAM', pierces: true, beamRadius: 18, beamMultiplier: 1.15, impactRadius: 0, impactMultiplier: 0, outerWidth: 45, coreWidth: 18 };
+  if (stacks >= 100) return { tier: 'overload', label: 'OVERLOAD · AREA BEAM', pierces: true, beamRadius: 65, beamMultiplier: 1.3, impactRadius: 120, impactMultiplier: 1.2, outerWidth: 90, coreWidth: 45 };
+  if (stacks >= 25) return { tier: 'piercing', label: 'PIERCING BEAM', pierces: true, beamRadius: 18, beamMultiplier: 1.10, impactRadius: 0, impactMultiplier: 0, outerWidth: 45, coreWidth: 18 };
   return { tier: 'standard', label: 'FOCUSED BEAM', pierces: false, beamRadius: 0, beamMultiplier: 1, impactRadius: 0, impactMultiplier: 0, outerWidth: 15, coreWidth: 7 };
 }
 function pointSegmentDistance(point, fromX, fromY, toX, toY) {
@@ -207,13 +207,13 @@ function passiveDescription(player) {
   const stats = player?.stats || getCharacter(player);
   if (isLaserCharacter(player)) {
     const stacks = player?.slimeStacks || 0;
-    const nextStack = 10 - stacks % 10 || 10;
+    const nextStack = 50 - stacks % 50 || 50;
     const stackDamage = player?.stackDamageBonus || 0;
     const evolution = laserEvolution(player);
     return `<div class="passive-description">
-      <p>Gain <b>+2 Damage</b> every 10 slime kills <span class="ratio-badge"><i>✦</i> ${nextStack} to next</span></p>
+      <p>Gain <b>+2 Damage</b> every 50 slime kills <span class="ratio-badge"><i>✦</i> ${nextStack} to next</span></p>
       <p>Slime stacks: <b>${stacks}</b>. Current bonus: <b>+${stackDamage} Damage</b>.</p>
-      <p>Laser evolution: <b>${evolution.label}</b>. <b>25</b> stacks = piercing; <b>100</b> stacks = huge area beam.</p>
+      <p>Laser evolution: <b>${evolution.label}</b>. <b>25</b> stacks = piercing; <b>100</b> stacks = area beam.</p>
     </div>`;
   }
   const critBonus = stats.crit * .20;
@@ -435,24 +435,27 @@ function renderUpgradeSelection() {
   const shopHelp = isLaserCharacter(player)
     ? 'Attack Speed is NOT available for Pormanove. Buy Damage directly instead.'
     : 'Attack Speed shortens the delay before Jean Bernard starts his next two-shot burst.';
-  const roster = game.players.map((p, index) => { const rosterCharacter = getCharacter(p); return `<article class="co-op-player ${p.freeUpgradeClaimed ? 'done' : ''} ${index === shopActivePlayer ? 'active' : ''}"><img src="${rosterCharacter.sprite}" alt=""><div><strong>Player ${index + 1} · ${rosterCharacter.name}</strong><small>${p.freeUpgradeClaimed ? `Selected · ${p.lastUpgrade}` : 'Choosing upgrade'}</small></div><span>${p.freeUpgradeClaimed ? 'READY' : 'PICK 1'}</span></article>`; }).join('');
+  const roster = game.players.map((p, index) => { const rosterCharacter = getCharacter(p); return `<article class="co-op-player ${p.freeUpgradeClaimed ? 'done' : ''} ${index === shopActivePlayer ? 'active' : ''}"><img src="${rosterCharacter.sprite}" alt=""><div><strong>Player ${index + 1} · ${rosterCharacter.name}</strong><small>${p.freeUpgradeClaimed ? `Selected · ${p.lastUpgrade}` : 'Choosing upgrade'}</small></div><span>${p.freeUpgradeClaimed ? 'READY ✓' : 'PICK 1'}</span></article>`; }).join('');
+  const allReady = game.players.every(p => p.freeUpgradeClaimed);
   ui.innerHTML = `
     <section class="screen shop-screen upgrade-screen">
       <header class="shop-header"><div><div class="eyebrow">Intermission</div><h1>Choose your upgrade</h1><p>Wave ${game.wave} cleared. Each survivor gets one free stat upgrade before the next wave.</p></div><div class="wave-label">NEXT WAVE<br>${String(game.wave + 1).padStart(2, '0')}</div></header>
       <div class="co-op-roster">${roster}</div>
       <div class="intermission-grid">
         <aside class="stats-panel"><h2>Survivor stats</h2><p class="panel-subtitle">Current values · Player ${shopActivePlayer + 1}</p><div class="active-player"><img src="${character.sprite}" alt=""><div><h3>${character.name}</h3></div></div>${characterStats(player)}<div class="stat-group"><h3>PASSIVE · COMBAT RHYTHM</h3>${passiveDescription(player)}</div></aside>
-        <section class="shop-panel"><h2>Free stat choice</h2><p class="shop-help">${pickStatus} ${shopHelp}</p><div class="upgrade-grid">${cardHtml}</div><div class="player-selector">${game.players.map((p, i) => `<button class="player-tab ${i === shopActivePlayer ? 'active' : ''}" data-player="${i}">P${i + 1} · ${p.freeUpgradeClaimed ? 'DONE' : 'PICK 1'}</button>`).join('')}</div><p class="shop-instructions">D-pad: inspect stat · A: confirm free choice · Start: continue</p></section>
-        <aside class="inventory-panel stat-detail-panel"><div id="upgrade-detail-panel">${upgradeDetailHtml(player, UPGRADES[upgradeDetailIndex])}</div><div class="mini-loadout"><span>LOADOUT · EMPTY</span><div><i>+</i><i>+</i><i>+</i><i>+</i><i>+</i><i>+</i></div></div></aside>
+        <section class="shop-panel"><h2>Free stat choice</h2><p class="shop-help">${pickStatus} ${shopHelp}</p><div class="upgrade-grid">${cardHtml}</div><div class="player-selector">${game.players.map((p, i) => `<button class="player-tab ${i === shopActivePlayer ? 'active' : ''}" data-player="${i}">P${i + 1} · ${p.freeUpgradeClaimed ? 'DONE' : 'PICK 1'}</button>`).join('')}</div><p class="shop-instructions">D-pad: inspect stat · A: confirm free choice</p></section>
+        <aside class="inventory-panel stat-detail-panel"><div id="upgrade-detail-panel">${upgradeDetailHtml(player, UPGRADES[upgradeDetailIndex])}</div></aside>
       </div>
+      <div class="store-footer"><span>${allReady ? 'All players ready!' : 'Wait for all players to choose'}</span><button id="start-wave" class="primary" ${allReady ? '' : 'disabled'}>Start wave ${game.wave + 1}</button></div>
     </section>`;
   document.querySelectorAll('[data-upgrade]').forEach(buttonElement => {
     const index = Number(buttonElement.dataset.upgradeIndex);
     buttonElement.onmouseenter = () => updateUpgradeDetail(player, index);
     buttonElement.onfocus = () => updateUpgradeDetail(player, index);
-    buttonElement.onclick = () => { sound.unlock(); const upgrade = UPGRADES.find(u => u.id === buttonElement.dataset.upgrade); if (applyUpgrade(player, upgrade)) { if (game.players.every(p => p.freeUpgradeClaimed)) { showStore(); return; } const next = game.players.findIndex(p => !p.freeUpgradeClaimed); if (next >= 0) { shopActivePlayer = next; upgradeDetailIndex = game.players[next].shopSelection; } renderUpgradeSelection(); } };
+    buttonElement.onclick = () => { sound.unlock(); const upgrade = UPGRADES.find(u => u.id === buttonElement.dataset.upgrade); if (applyUpgrade(player, upgrade)) { if (game.players.every(p => p.freeUpgradeClaimed)) { renderUpgradeSelection(); return; } const next = game.players.findIndex(p => !p.freeUpgradeClaimed); if (next >= 0) { shopActivePlayer = next; upgradeDetailIndex = game.players[next].shopSelection; } renderUpgradeSelection(); } };
   });
   document.querySelectorAll('[data-player]').forEach(buttonElement => buttonElement.onclick = () => { sound.unlock(); shopActivePlayer = Number(buttonElement.dataset.player); upgradeDetailIndex = game.players[shopActivePlayer].shopSelection; sound.click(); renderUpgradeSelection(); });
+  byId('start-wave').onclick = () => { sound.unlock(); sound.click(); if (game.players.every(p => p.freeUpgradeClaimed)) startWave(game.wave + 1); };
 }
 
 function updateFrontEnd() {
@@ -485,7 +488,6 @@ function updateFrontEnd() {
     if (session.players.length && session.players.every(p => p.ready)) startRun();
   }
   if (state === 'upgrade') updateUpgradeInput();
-  if (state === 'shop') updateStoreInput();
   if (state === 'defeat') {
     const retry = takeKey('enter') || takeKey(' ') || game.players.some(player => { const pad = getPad(player.padIndex); return pad && padEdge(pad, 'defeat-retry', button(pad, 0)); });
     const quit = takeKey('escape') || game.players.some(player => { const pad = getPad(player.padIndex); return pad && padEdge(pad, 'defeat-quit', button(pad, 1)); });
@@ -507,27 +509,11 @@ function updateUpgradeInput() {
     else if (up) delta = -UPGRADE_COLUMNS;
     else if (down) delta = UPGRADE_COLUMNS;
     if (delta) { player.shopSelection = (player.shopSelection + delta + UPGRADES.length) % UPGRADES.length; shopActivePlayer = index; upgradeDetailIndex = player.shopSelection; sound.click(); renderUpgradeSelection(); }
-    if (buy) { shopActivePlayer = index; upgradeDetailIndex = player.shopSelection; if (applyUpgrade(player, UPGRADES[player.shopSelection])) { if (game.players.every(p => p.freeUpgradeClaimed)) { showStore(); return; } const remaining = game.players.findIndex(p => !p.freeUpgradeClaimed); if (remaining >= 0) { shopActivePlayer = remaining; upgradeDetailIndex = game.players[remaining].shopSelection; } renderUpgradeSelection(); } }
-    if (next && game.players.every(p => p.freeUpgradeClaimed)) { showStore(); return; }
+    if (buy) { shopActivePlayer = index; upgradeDetailIndex = player.shopSelection; if (applyUpgrade(player, UPGRADES[player.shopSelection])) { if (game.players.every(p => p.freeUpgradeClaimed)) { renderUpgradeSelection(); return; } const remaining = game.players.findIndex(p => !p.freeUpgradeClaimed); if (remaining >= 0) { shopActivePlayer = remaining; upgradeDetailIndex = game.players[remaining].shopSelection; } renderUpgradeSelection(); } }
+    if (next && game.players.every(p => p.freeUpgradeClaimed)) { renderUpgradeSelection(); return; }
   }
 }
 
-function showStore() {
-  state = 'shop'; resetEdges();
-  ui.innerHTML = `
-    <section class="screen store-screen">
-      <header class="shop-header"><div><div class="eyebrow">Intermission · Party shop</div><h1>Shop</h1><p>Everyone has chosen an upgrade. This space belongs to the whole party.</p></div><div class="wave-label">NEXT WAVE<br>${String(game.wave + 1).padStart(2, '0')}</div></header>
-      <div class="store-tabs"><button class="store-tab active">SHOP</button><button class="store-tab" disabled>LOADOUT · SOON</button></div>
-      <main class="store-canvas"><div class="empty-store"><span>+</span><h2>Shop is empty for now</h2><p>Future items, equipment, and material purchases will appear here.</p></div></main>
-      <div class="store-footer"><span>✦ Materials are saved for future shop content.</span><button id="start-wave" class="primary">Start wave ${game.wave + 1}</button></div>
-    </section>`;
-  byId('start-wave').onclick = () => { sound.unlock(); sound.click(); startWave(game.wave + 1); };
-}
-function updateStoreInput() {
-  const keyboardStart = takeKey('enter') || takeKey(' ');
-  const controllerStart = game.players.some(player => { const pad = getPad(player.padIndex); return pad && padEdge(pad, 'store-start', button(pad, 0) || button(pad, 9)); });
-  if (keyboardStart || controllerStart) startWave(game.wave + 1);
-}
 function inputForPlayer(player) {
   const pad = getPad(player.padIndex);
   let x = 0, y = 0;
@@ -618,8 +604,8 @@ function killEnemy(enemy, owner) {
   if (enemy.dead) return; enemy.dead = true; sound.kill();
   if (owner && isLaserCharacter(owner)) {
     owner.slimeStacks++;
-    // Gain 1 stack every 10 slimes instead of 1 per slime
-    if (owner.slimeStacks % 10 === 0) { 
+    // Gain 1 stack every 50 slimes instead of 1 per slime (reduced drastically)
+    if (owner.slimeStacks % 50 === 0) { 
       owner.stats.damage += 2; 
       owner.stackDamageBonus += 2; 
       sound.tone(330, 900, .22, 'triangle', .05); 
@@ -633,10 +619,9 @@ function updateGame(dt) {
   for (const player of game.players) updatePlayer(player, dt);
   const living = game.players.filter(player => player.alive);
   if (!living.length) { showDefeat(); return; }
-  const average = living.reduce((sum, p) => ({ x: sum.x + p.x, y: sum.y + p.y }), { x: 0, y: 0 });
-  const targetX = average.x / living.length, targetY = average.y / living.length;
-  game.camera.x += (targetX - game.camera.x) * Math.min(1, dt * 5); game.camera.y += (targetY - game.camera.y) * Math.min(1, dt * 5);
-  game.camera.x = clamp(game.camera.x, W / 2, WORLD.width - W / 2); game.camera.y = clamp(game.camera.y, H / 2, WORLD.height - H / 2);
+  // Camera locked to show entire map (no follow mode)
+  game.camera.x = WORLD.width / 2;
+  game.camera.y = WORLD.height / 2;
   
   // Update wave timer and spawn enemies continuously
   if (game.waveTimer > 0) {
@@ -646,8 +631,6 @@ function updateGame(dt) {
       spawnSlime();
       game.spawnTimer = game.spawnInterval;
     }
-  } else if (!game.enemies.length && !game.drops.length) {
-    showUpgradeSelection();
   } else if (game.waveTimer <= 0) {
     // Wave time expired - force end wave even if enemies remain
     game.enemies = [];
