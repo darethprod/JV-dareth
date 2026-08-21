@@ -699,6 +699,9 @@ function drawArena() {
   ctx.translate(W / 2, H / 2);
   ctx.scale(ZOOM, ZOOM);
   ctx.translate(-W / 2 + baseOffsetX, -H / 2 + baseOffsetY);
+  // Draw world bounds
+  ctx.fillStyle = '#1a2e22';
+  ctx.fillRect(0, 0, WORLD.width, WORLD.height);
   const firstX = Math.floor((game.camera.x - W / 2) / 64) * 64, lastX = game.camera.x + W / 2 + 64;
   const firstY = Math.floor((game.camera.y - H / 2) / 64) * 64, lastY = game.camera.y + H / 2 + 64;
   for (let x = firstX; x < lastX; x += 64) for (let y = firstY; y < lastY; y += 64) { ctx.fillStyle = ((x / 64 + y / 64) & 1) ? '#28452f' : '#2b4932'; ctx.fillRect(x, y, 64, 64); ctx.fillStyle = '#315438'; ctx.fillRect(x + 7, y + 12, 3, 3); ctx.fillRect(x + 43, y + 48, 2, 2); }
