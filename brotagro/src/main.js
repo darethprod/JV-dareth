@@ -15,8 +15,8 @@ let H = canvas.height;
 ctx.imageSmoothingEnabled = false;
 ctx.webkitImageSmoothingEnabled = false;
 
-const WORLD = { width: 2400, height: 1800 };
-const ZOOM = Math.min(W / WORLD.width, H / WORLD.height) * 0.55;
+const WORLD = { width: 800, height: 600 };
+const ZOOM = Math.max(W / WORLD.width, H / WORLD.height);
 const JEAN_BERNARD = {
   id: 'jean-bernard', name: 'Jean Bernard', title: 'Burst Rifleman', maxHp: 30,
   damage: 30, resistance: 0, burstsPerSecond: 1, crit: 0, moveSpeed: 230, range: 230,
