@@ -1,43 +1,50 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tower Defense</title>
-  <link rel="stylesheet" href="css/style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Tower Defense</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#1e1710;font-family:Georgia,'Times New Roman',serif}*{box-sizing:border-box}#game{position:relative;width:100vw;height:100vh;overflow:hidden}#map{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;image-rendering:auto}#canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.wood{background:linear-gradient(#8b5a2b,#633d1e);border:3px solid #3b2412;box-shadow:inset 0 0 0 2px #b77b3e,0 3px 8px #0008;border-radius:8px}.button{padding:18px 44px;color:#fff;font:700 30px Georgia;cursor:pointer;background:linear-gradient(#9b6732,#633d1e);border:3px solid #3b2412;border-radius:8px;box-shadow:inset 0 0 0 2px #b77b3e,0 4px 0 #3b2412;text-shadow:2px 2px #2a1609}.button:active{transform:translateY(3px);box-shadow:inset 0 0 0 2px #b77b3e,0 1px 0 #3b2412}#menu{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:18px;z-index:20}#hud{position:absolute;inset:0;z-index:10;pointer-events:none}.unit-menu{position:absolute;left:18px;top:18px;padding:8px;pointer-events:auto}.unit-slot{width:82px;height:82px;padding:5px;background:#4b2c16;border:3px solid #2b190d;border-radius:6px;cursor:grab}.unit-slot img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated}.money{position:absolute;left:120px;top:18px;padding:8px 14px;color:#fff;font:700 22px Georgia;display:flex;align-items:center;gap:8px}.money img{width:28px;height:28px;image-rendering:pixelated}.core{position:absolute;top:16px;left:50%;transform:translateX(-50%);width:min(440px,45vw);text-align:center;color:#fff;font-weight:700;text-shadow:2px 2px #000}.bar{height:24px;margin-top:4px;background:#32150f;border:3px solid #3b2412;border-radius:6px;overflow:hidden}.bar>div{height:100%;width:100%;background:#b22;transition:width .15s}.wave{position:absolute;right:18px;top:18px;padding:8px 14px;color:#fff;font:700 22px Georgia}.hidden{display:none!important}</style>
 </head>
 <body>
-  <main id="game" aria-label="Tower Defense">
-    <img id="map-image" src="map/map.png" alt="Carte du Tower Defense">
-    <canvas id="game-canvas"></canvas>
-
-    <section id="menu" class="wood-panel">
-      <button id="play-button" class="wood-button" type="button">Jouer</button>
-    </section>
-
-    <section id="hud" hidden>
-      <div id="unit-menu" class="wood-panel">
-        <button id="unit-slot" class="unit-slot" type="button" draggable="true" aria-label="Unité prolétaire">
-          <img src="hud/menudesunité.png" alt="Unité">
-        </button>
-      </div>
-
-      <div id="currency" class="hud-box">
-        <img src="hud/monnaie/billet.png" alt="Monnaie">
-        <span id="currency-value">0</span>
-      </div>
-
-      <div id="core-health" class="core-health">
-        <div class="core-health__label">Noyau</div>
-        <div class="core-health__bar">
-          <div id="core-health-fill"></div>
-        </div>
-      </div>
-
-      <div id="wave-label" class="hud-box">Vague <span id="wave-value">1</span>/20</div>
-    </section>
-  </main>
-
-  <script type="module" src="js/main.js"></script>
+<div id="game">
+<img id="map" src="map/map.png" alt="Carte">
+<canvas id="canvas"></canvas>
+<div id="menu" class="wood"><button id="play" class="button">Jouer</button></div>
+<div id="hud" class="hidden">
+<div class="unit-menu wood"><button id="unit" class="unit-slot" draggable="true" aria-label="Unité"><img src="hud/menudesunité.png" alt="Unité"></button></div>
+<div class="money wood"><img src="hud/monnaie/billet.png" alt="Monnaie"><span id="moneyValue">0</span></div>
+<div class="core"><div>Noyau</div><div class="bar"><div id="coreFill"></div></div></div>
+<div class="wave wood">Vague <span id="waveValue">1</span>/20</div>
+</div></div>
+<script>
+'use strict';
+const map=document.getElementById('map'),canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+const menu=document.getElementById('menu'),hud=document.getElementById('hud'),play=document.getElementById('play'),unit=document.getElementById('unit');
+const coreFill=document.getElementById('coreFill'),waveValue=document.getElementById('waveValue');
+let running=false,last=0,drag=false,towers=[],mobs=[],wave=1,spawnLeft=0,spawnTimer=0,coreHP=100,path=[],waterCanvas,waterCtx;
+function resize(){const d=Math.min(devicePixelRatio||1,2);canvas.width=innerWidth*d;canvas.height=innerHeight*d;canvas.style.width=innerWidth+'px';canvas.style.height=innerHeight+'px';ctx.setTransform(d,0,0,d,0,0);if(running) buildPath();}
+addEventListener('resize',resize);resize();
+function buildPath(){
+ const w=map.naturalWidth,h=map.naturalHeight;if(!w||!h)return;
+ waterCanvas=waterCanvas||document.createElement('canvas');waterCanvas.width=w;waterCanvas.height=h;waterCtx=waterCanvas.getContext('2d',{willReadFrequently:true});waterCtx.clearRect(0,0,w,h);waterCtx.drawImage(map,0,0);
+ // Follow the map's visible road by sampling from left to right: choose the non-water band closest to the previous point.
+ const pts=[],samples=90;let prevY=Math.floor(h*.5);
+ for(let i=0;i<samples;i++){const x=Math.floor(i*w/(samples-1));let best=prevY,bestScore=Infinity;for(let y=Math.max(0,prevY-Math.floor(h*.16));y<Math.min(h,prevY+Math.floor(h*.16));y+=3){const p=waterCtx.getImageData(x,y,1,1).data;const blue=p[2]>p[0]*1.25&&p[2]>p[1]*1.05;const score=blue?99999:Math.abs(y-prevY);if(score<bestScore){bestScore=score;best=y;}}prevY=best;pts.push({x:x/w*innerWidth,y:best/h*innerHeight});}
+ path=[];for(let i=0;i<pts.length;i+=Math.max(1,Math.floor(samples/12)))path.push(pts[i]);path.push(pts[pts.length-1]);
+}
+function isWater(x,y){if(!waterCtx)return false;const sx=Math.max(0,Math.min(map.naturalWidth-1,Math.floor(x/innerWidth*map.naturalWidth))),sy=Math.max(0,Math.min(map.naturalHeight-1,Math.floor(y/innerHeight*map.naturalHeight)));const p=waterCtx.getImageData(sx,sy,1,1).data;return p[2]>p[0]*1.25&&p[2]>p[1]*1.05;}
+class Slime{constructor(){this.i=0;this.x=path[0].x;this.y=path[0].y;this.hp=5;this.max=5;this.damage=1;this.speed=34;this.dead=false;this.reached=false}update(dt){if(this.dead||this.reached)return;let t=path[this.i+1];if(!t){this.reached=true;coreHP=Math.max(0,coreHP-this.damage);return}let dx=t.x-this.x,dy=t.y-this.y,d=Math.hypot(dx,dy),s=this.speed*dt;if(d<=s){this.x=t.x;this.y=t.y;this.i++}else{this.x+=dx/d*s;this.y+=dy/d*s}}draw(){if(this.dead||this.reached)return;ctx.save();ctx.fillStyle='#6fbd57';ctx.strokeStyle='#284b21';ctx.lineWidth=2;ctx.beginPath();ctx.arc(this.x,this.y,13,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#222';ctx.fillRect(this.x-10,this.y-22,20,3);ctx.fillStyle='#d33';ctx.fillRect(this.x-10,this.y-22,20*(this.hp/this.max),3);ctx.restore()}}
+class Tower{constructor(x,y){this.x=x;this.y=y;this.range=120;this.cool=0;this.target=null}update(dt){this.cool-=dt;this.target=mobs.find(m=>!m.dead&&!m.reached&&Math.hypot(m.x-this.x,m.y-this.y)<=this.range)||null;if(this.target&&this.cool<=0){this.target.hp=Math.max(0,this.target.hp-1);if(this.target.hp<=0)this.target.dead=true;this.cool=.75}}draw(selected){ctx.save();if(selected){ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(this.x,this.y,this.range,0,Math.PI*2);ctx.stroke()}ctx.fillStyle='#6b4424';ctx.strokeStyle='#2b190d';ctx.lineWidth=3;ctx.beginPath();ctx.arc(this.x,this.y,16,0,Math.PI*2);ctx.fill();ctx.stroke();if(this.target){ctx.translate(this.x,this.y);ctx.rotate(Math.atan2(this.target.y-this.y,this.target.x-this.x));ctx.fillStyle='#2b190d';ctx.fillRect(0,-3,20,6)}ctx.restore()}}
+let selected=null;
+function startWave(){spawnLeft=wave+4;spawnTimer=0}
+function update(dt){if(spawnLeft>0){spawnTimer-=dt;if(spawnTimer<=0){mobs.push(new Slime());spawnLeft--;spawnTimer=Math.max(.25,.85-wave*.02)}}for(const m of mobs)m.update(dt);mobs=mobs.filter(m=>!m.dead&&!m.reached);for(const t of towers)t.update(dt);if(spawnLeft===0&&mobs.length===0&&wave<20){wave++;startWave()}waveValue.textContent=wave;coreFill.style.width=coreHP+'%';}
+function loop(t){if(!running)return;const dt=Math.min((t-last)/1000||0,.05);last=t;update(dt);ctx.clearRect(0,0,innerWidth,innerHeight);for(const m of mobs)m.draw();for(const x of towers)x.draw(x===selected);if(coreHP<=0)running=false;requestAnimationFrame(loop)}
+play.addEventListener('click',()=>{if(running)return;menu.classList.add('hidden');hud.classList.remove('hidden');if(!path.length)buildPath();running=true;wave=1;coreHP=100;startWave();last=performance.now();requestAnimationFrame(loop)});
+unit.addEventListener('dragstart',e=>{drag=true;e.dataTransfer?.setData('text/plain','unit')});unit.addEventListener('dragend',()=>drag=false);
+map.addEventListener('dragover',e=>e.preventDefault());map.addEventListener('drop',e=>{e.preventDefault();if(!drag)return;const r=map.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;if(!isWater(x,y)){const tower=new Tower(x,y);towers.push(tower);selected=tower}drag=false});
+map.addEventListener('click',e=>{const r=map.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;selected=towers.find(t=>Math.hypot(t.x-x,t.y-y)<22)||null});
+</script>
 </body>
 </html>
