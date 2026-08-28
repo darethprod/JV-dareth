@@ -8,35 +8,70 @@
 </head>
 <body>
     <!-- Menu Principal -->
-    <div id="main-menu" class="menu-bois">
-        <h1>TOWER DEFENSE</h1>
-        <button id="btn-jouer">JOUER</button>
+    <div id="main-menu" class="menu-screen">
+        <h1 class="game-title">TOWER DEFENSE</h1>
+        <button id="play-btn" class="wooden-button">JOUER</button>
     </div>
 
     <!-- Interface de Jeu -->
     <div id="game-container" style="display: none;">
-        <!-- HUD - Barre de vie joueur (centre haut) -->
-        <div id="player-lifebar">
-            <span id="player-hp">100</span>/100
+        <!-- HUD Haut Centre - Barre de vie du noyau -->
+        <div id="core-health-bar">
+            <div id="core-health-fill"></div>
+            <span id="core-health-text">100 / 100</span>
         </div>
 
-        <!-- HUD - Monnaie (haut gauche) -->
+        <!-- HUD Haut Gauche - Monnaie -->
         <div id="money-display">
-            <img src="assets/hud/billet.png" alt="$">
-            <span id="money-amount">0</span>
+            <img src="assets/billet.png" alt="Argent" id="money-icon">
+            <span id="money-amount">100</span>
         </div>
 
-        <!-- HUD - Menu des unités (haut gauche, sous la monnaie) -->
+        <!-- HUD Droite - Menu des unités (1/4 de l'écran) -->
         <div id="unit-menu">
-            <img src="assets/hud/menudesunité.png" alt="Menu Unités">
-            <div id="tower-slot" class="tower-slot" data-tower="proletaire">
-                <img src="assets/towers/proletaire/tour.png" alt="Prolétaire">
-                <span class="tower-cost">50</span>
+            <h2 class="unit-menu-title">UNITÉS</h2>
+            <div id="unit-slots">
+                <div class="unit-slot" data-unit="proletaire">
+                    <img src="assets/prolétaire.png" alt="Prolétaire" class="unit-sprite">
+                    <div class="unit-cost">50$</div>
+                </div>
+            </div>
+            
+            <!-- Panneau d'info de l'unité -->
+            <div id="unit-info-panel" style="display: none;">
+                <h3 id="unit-info-name">Prolétaire</h3>
+                <img src="assets/prolétaire.png" alt="Prolétaire" id="unit-info-sprite">
+                <p id="unit-info-description">Ouvrier de base, attaque les ennemis à distance.</p>
+                <div class="unit-stats">
+                    <div class="stat-row">
+                        <span>Dégâts:</span>
+                        <span id="unit-info-damage">10</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Portée:</span>
+                        <span id="unit-info-range">150</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Vitesse d'attaque:</span>
+                        <span id="unit-info-attackspeed">1.0/s</span>
+                    </div>
+                </div>
+                <div class="unit-passive">
+                    <strong>Passif:</strong>
+                    <p id="unit-info-passive">Aucun passif spécial.</p>
+                </div>
             </div>
         </div>
 
-        <!-- Zone de Jeu -->
+        <!-- Canvas du jeu -->
         <canvas id="game-canvas"></canvas>
+
+        <!-- Écran Game Over -->
+        <div id="game-over-screen" style="display: none;" class="menu-screen">
+            <h1 class="game-title">GAME OVER</h1>
+            <p id="final-wave">Vague atteinte: 1</p>
+            <button id="restart-btn" class="wooden-button">REJOUER</button>
+        </div>
     </div>
 
     <script src="js/game.js"></script>
