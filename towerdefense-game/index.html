@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tower Defense</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Menu Principal -->
+    <div id="main-menu" class="menu-screen">
+        <h1 class="game-title">Tower Defense</h1>
+        <div class="menu-buttons">
+            <button id="btn-play" class="menu-btn">Jouer</button>
+        </div>
+    </div>
+
+    <!-- Écran de Jeu -->
+    <div id="game-screen" class="game-screen hidden">
+        <!-- HUD - Barre de vie du joueur (noyau) -->
+        <div id="player-hud">
+            <div id="player-health-container">
+                <div id="player-health-bar"></div>
+                <span id="player-health-text">100/100</span>
+            </div>
+        </div>
+
+        <!-- HUD - Monnaie (haut gauche) -->
+        <div id="money-display">
+            <img src="assets/billet.png" alt="Argent" class="money-icon">
+            <span id="money-text">0</span>
+        </div>
+
+        <!-- Menu des unités (haut gauche) -->
+        <div id="unit-menu">
+            <div class="unit-slot" data-unit-type="proletaire">
+                <img src="assets/prolétaire.png" alt="Prolétaire" class="unit-image">
+                <span class="unit-cost">50</span>
+            </div>
+        </div>
+
+        <!-- Canvas du jeu -->
+        <canvas id="game-canvas"></canvas>
+
+        <!-- Panneau d'information de l'unité -->
+        <div id="unit-info-panel" class="hidden">
+            <h3 id="unit-info-name"></h3>
+            <p id="unit-info-description"></p>
+            <div id="unit-info-stats"></div>
+            <button id="close-unit-info">Fermer</button>
+        </div>
+    </div>
+
+    <script src="js/game.js"></script>
+</body>
+</html>
