@@ -21,11 +21,13 @@ export class Game {
     window.addEventListener('resize', this.resize);
     this.bindUnitPlacement();
     this.resize();
+    this.updateHud();
   }
 
   start() {
     if (this.running) return;
     this.running = true;
+    this.lastTime = performance.now();
     this.waveManager.startWave();
     requestAnimationFrame(this.loop);
   }
@@ -44,56 +46,65 @@ export class Game {
       this.draggedUnit = true;
       event.dataTransfer?.setData('text/plain', 'proletaire');
     });
+    this.unitSlot.addEventListener('dragend', () => { this.draggedUnit = false; });
 
-    this.unitSlot.addEventListener('dragend', () => {
-      this.draggedUnit = false;
+    this.canvas.addEventListener('dragover', (event) => {
+      if (this.draggedUnit) event.preventDefault();
     });
-
-    this.map.addEventListener('dragover', (event) => event.preventDefault());
-    this.map.addEventListener('drop', (event) => {
+    this.canvas.addEventListener('drop', (event) => {
       event.preventDefault();
       if (!this.draggedUnit) return;
-      const rect = this.map.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
-      if (this.isWater(x, y, rect.width, rect.height)) return;
+      const x = event.clientX;
+      const y = event.clientY;
+      if (this.isWater(x, y)) {
+        this.draggedUnit = false;
+        return;
+      }
       this.towers.push(new Tower(x, y));
       this.draggedUnit = false;
     });
   }
 
-  // The map remains the source of truth for terrain. Placement is rejected on
-  // the blue water pixels; no extra map geometry is introduced here.
-  isWater(x, y, width, height) {
-    const source = document.createElement('canvas');
-    const size = 1;
-    source.width = size;
-    source.height = size;
-    const sctx = source.getContext('2d', { willReadFrequently: true });
-    sctx.drawImage(this.map, x / width * this.map.naturalWidth, y / height * this.map.naturalHeight, 1, 1, 0, 0, 1, 1);
-    const [r, g, b] = sctx.getImageData(0, 0, 1, 1).data;
+  isWater(x, y) {
+    if (!this.map.complete || !this.map.naturalWidth) return false;
+    const sample = document.createElement('canvas');
+    sample.width = sample.height = 1;
+    const context = sample.getContext('2d', { willReadFrequently: true });
+    const sourceX = Math.max(0, Math.min(this.map.naturalWidth - 1, x / innerWidth * this.map.naturalWidth));
+    const sourceY = Math.max(0, Math.min(this.map.naturalHeight - 1, y / innerHeight * this.map.naturalHeight));
+    context.drawImage(this.map, sourceX, sourceY, 1, 1, 0, 0, 1, 1);
+    const [r, g, b] = context.getImageData(0, 0, 1, 1).data;
     return b > r * 1.25 && b > g * 1.05;
+  }
+
+  updateHud() {
+    this.hud.wave.textContent = String(this.waveManager.wave);
+    this.hud.coreHealth.style.width = `${this.core.hp}%`;
   }
 
   loop(timestamp) {
     if (!this.running) return;
-    const dt = Math.min((timestamp - this.lastTime) / 1000 || 0, 0.05);
+    const dt = Math.min((timestamp - this.lastTime) / 1000, 0.05);
     this.lastTime = timestamp;
 
     const mobs = this.waveManager.update(dt);
     for (const tower of this.towers) tower.update(dt, mobs);
     for (const mob of mobs) {
-      if (mob.reachedCore) this.core.damage(mob.damage);
+      if (mob.reachedCore && !mob.coreDamaged) {
+        this.core.damage(mob.damage);
+        mob.coreDamaged = true;
+      }
     }
 
-    this.hud.wave.textContent = this.waveManager.wave;
-    this.hud.coreHealth.style.width = `${this.core.hp}%`;
-
-    this.ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-    for (const mob of mobs) mob.draw(this.ctx);
+    this.updateHud();
+    this.ctx.clearRect(0, 0, innerWidth, innerHeight);
     for (const tower of this.towers) tower.draw(this.ctx);
+    for (const mob of mobs) mob.draw(this.ctx);
 
-    if (this.core.hp <= 0) this.running = false;
+    if (this.core.hp <= 0) {
+      this.running = false;
+      return;
+    }
     requestAnimationFrame(this.loop);
   }
 }
