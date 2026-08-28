@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tower Defense</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main id="game" aria-label="Tower Defense">
+    <img id="map-image" src="map/map.png" alt="Carte du Tower Defense">
+    <canvas id="game-canvas"></canvas>
+
+    <section id="menu" class="wood-panel">
+      <button id="play-button" class="wood-button" type="button">Jouer</button>
+    </section>
+
+    <section id="hud" hidden>
+      <div id="unit-menu" class="wood-panel">
+        <button id="unit-slot" class="unit-slot" type="button" draggable="true" aria-label="Unité prolétaire">
+          <img src="hud/menudesunité.png" alt="Unité">
+        </button>
+      </div>
+
+      <div id="currency" class="hud-box">
+        <img src="hud/monnaie/billet.png" alt="Monnaie">
+        <span id="currency-value">0</span>
+      </div>
+
+      <div id="core-health" class="core-health">
+        <div class="core-health__label">Noyau</div>
+        <div class="core-health__bar">
+          <div id="core-health-fill"></div>
+        </div>
+      </div>
+
+      <div id="wave-label" class="hud-box">Vague <span id="wave-value">1</span>/20</div>
+    </section>
+  </main>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
