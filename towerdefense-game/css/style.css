@@ -1,4 +1,4 @@
-/* Reset et styles de base */
+/* Reset et base */
 * {
     margin: 0;
     padding: 0;
@@ -11,12 +11,8 @@ body {
     background-color: #1a1a1a;
 }
 
-.hidden {
-    display: none !important;
-}
-
-/* Menu Principal - Style simple bois */
-.menu-screen {
+/* Menu Principal Style Bois */
+.menu-bois {
     position: fixed;
     top: 0;
     left: 0;
@@ -28,96 +24,56 @@ body {
     justify-content: center;
     align-items: center;
     z-index: 1000;
+    border: 8px solid #5C3317;
 }
 
-.game-title {
+.menu-bois h1 {
     font-size: 4rem;
     color: #DEB887;
     text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
     margin-bottom: 3rem;
-    font-weight: bold;
+    letter-spacing: 5px;
 }
 
-.menu-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-}
-
-.menu-btn {
+.menu-bois button {
     padding: 1rem 3rem;
     font-size: 1.5rem;
-    background: linear-gradient(180deg, #DEB887 0%, #CD853F 100%);
-    border: 3px solid #8B4513;
+    background: linear-gradient(180deg, #DEB887 0%, #B8860B 100%);
+    border: 4px solid #5C3317;
     border-radius: 10px;
+    color: #5C3317;
     cursor: pointer;
-    color: #4a2810;
+    transition: transform 0.2s, box-shadow 0.2s;
     font-weight: bold;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    text-transform: uppercase;
 }
 
-.menu-btn:hover {
+.menu-bois button:hover {
     transform: scale(1.05);
-    background: linear-gradient(180deg, #F5DEB3 0%, #DEB887 100%);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
-.menu-btn:active {
-    transform: scale(0.98);
+/* Container de Jeu */
+#game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
 }
 
-/* Écran de Jeu */
-.game-screen {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: #2d2d2d;
-}
-
-#game-canvas {
-    display: block;
-    width: 100%;
-    height: 100%;
-}
-
-/* HUD - Barre de vie du joueur (noyau) - Haut au milieu */
-#player-hud {
+/* HUD - Barre de vie joueur (centre haut) */
+#player-lifebar {
     position: absolute;
     top: 20px;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 100;
-}
-
-#player-health-container {
-    width: 400px;
-    height: 40px;
-    background-color: #333;
-    border: 3px solid #8B4513;
-    border-radius: 20px;
-    overflow: hidden;
-    position: relative;
-}
-
-#player-health-bar {
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, #ff4444 0%, #ff6666 100%);
-    transition: width 0.3s ease;
-}
-
-#player-health-text {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: white;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 10px 30px;
+    border-radius: 10px;
+    color: #ff4444;
+    font-size: 1.5rem;
     font-weight: bold;
-    font-size: 1.2rem;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    border: 3px solid #8B0000;
+    z-index: 100;
 }
 
 /* HUD - Monnaie (haut gauche) */
@@ -125,140 +81,89 @@ body {
     position: absolute;
     top: 20px;
     left: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 10px 20px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     gap: 10px;
-    background-color: rgba(0, 0, 0, 0.7);
-    padding: 10px 20px;
-    border-radius: 10px;
-    border: 2px solid #DEB887;
     z-index: 100;
+    border: 2px solid #FFD700;
 }
 
-.money-icon {
+#money-display img {
     width: 30px;
     height: 30px;
 }
 
-#money-text {
-    color: #DEB887;
+#money-amount {
+    color: #FFD700;
     font-size: 1.5rem;
     font-weight: bold;
 }
 
-/* Menu des unités (haut gauche) */
+/* HUD - Menu des unités (haut gauche, sous la monnaie) */
 #unit-menu {
     position: absolute;
     top: 80px;
     left: 20px;
-    display: flex;
-    gap: 10px;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 10px;
+    border-radius: 10px;
     z-index: 100;
 }
 
-.unit-slot {
-    width: 80px;
-    height: 80px;
-    background-color: rgba(0, 0, 0, 0.7);
+#unit-menu > img {
+    display: block;
+    width: 200px;
+    height: auto;
+    margin-bottom: 10px;
+}
+
+.tower-slot {
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.2);
     border: 3px solid #8B4513;
-    border-radius: 10px;
+    border-radius: 8px;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s;
     position: relative;
 }
 
-.unit-slot:hover {
-    border-color: #DEB887;
-    transform: scale(1.05);
-}
-
-.unit-slot.selected {
+.tower-slot:hover {
+    background: rgba(255, 255, 255, 0.4);
     border-color: #FFD700;
-    box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
 }
 
-.unit-image {
-    width: 50px;
-    height: 50px;
-    object-fit: contain;
+.tower-slot.selected {
+    border-color: #00FF00;
+    box-shadow: 0 0 10px #00FF00;
 }
 
-.unit-cost {
-    color: #DEB887;
-    font-weight: bold;
-    font-size: 0.9rem;
-    margin-top: 5px;
+.tower-slot img {
+    width: 40px;
+    height: 40px;
 }
 
-/* Panneau d'information de l'unité */
-#unit-info-panel {
+.tower-cost {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background-color: rgba(139, 69, 19, 0.95);
-    border: 4px solid #DEB887;
-    border-radius: 15px;
-    padding: 20px;
-    min-width: 300px;
-    max-width: 400px;
-    z-index: 200;
-    color: #DEB887;
+    bottom: -20px;
+    background: rgba(0, 0, 0, 0.8);
+    color: #FFD700;
+    font-size: 0.8rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
 }
 
-#unit-info-panel h3 {
-    font-size: 1.5rem;
-    margin-bottom: 10px;
-    text-align: center;
-}
-
-#unit-info-panel p {
-    margin-bottom: 15px;
-    line-height: 1.4;
-}
-
-#unit-info-stats {
-    background-color: rgba(0, 0, 0, 0.5);
-    padding: 10px;
-    border-radius: 8px;
-    margin-bottom: 15px;
-}
-
-#unit-info-stats div {
-    margin: 5px 0;
-}
-
-#close-unit-info {
+/* Canvas de Jeu */
+#game-canvas {
+    display: block;
     width: 100%;
-    padding: 10px;
-    background: linear-gradient(180deg, #DEB887 0%, #CD853F 100%);
-    border: 2px solid #8B4513;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: bold;
-    color: #4a2810;
-    transition: all 0.3s ease;
-}
-
-#close-unit-info:hover {
-    background: linear-gradient(180deg, #F5DEB3 0%, #DEB887 100%);
-}
-
-/* Barre de vie des ennemis */
-.enemy-health-bar {
-    position: absolute;
-    background-color: #333;
-    border: 1px solid #000;
-    border-radius: 3px;
-    overflow: hidden;
-}
-
-.enemy-health-fill {
     height: 100%;
-    background: linear-gradient(90deg, #ff4444 0%, #ff6666 100%);
-    transition: width 0.2s ease;
 }
