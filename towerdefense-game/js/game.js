@@ -2,356 +2,562 @@
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
 
-// État du jeu
-let gameState = {
-    isPlaying: false,
-    money: 150,
-    playerHP: 100,
-    maxPlayerHP: 100,
-    wave: 1,
-    enemiesKilled: 0,
-    selectedTower: null
-};
-
-// Assets
-const assets = {
-    map: new Image(),
-    slime: new Image(),
-    proletaire: new Image(),
-    billet: new Image(),
-    menuUnite: new Image()
-};
-
-assets.map.src = 'assets/map/map.png';
-assets.slime.src = 'assets/enemies/slime.png';
-assets.proletaire.src = 'assets/towers/proletaire/tour.png';
-assets.billet.src = 'assets/hud/billet.png';
-assets.menuUnite.src = 'assets/hud/menudesunité.png';
-
-// Dimensions du canvas
-function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
-resizeCanvas();
-window.addEventListener('resize', resizeCanvas);
-
-// Chemin des ennemis (points de passage)
-const enemyPath = [
-    { x: 0, y: canvas.height * 0.3 },
-    { x: canvas.width * 0.2, y: canvas.height * 0.3 },
-    { x: canvas.width * 0.2, y: canvas.height * 0.6 },
-    { x: canvas.width * 0.5, y: canvas.height * 0.6 },
-    { x: canvas.width * 0.5, y: canvas.height * 0.4 },
-    { x: canvas.width * 0.8, y: canvas.height * 0.4 },
-    { x: canvas.width * 0.8, y: canvas.height * 0.7 },
-    { x: canvas.width, y: canvas.height * 0.7 }
+// Waypoints du chemin (extraits de la map)
+const waypoints = [
+    {x: 110, y: 264},
+    {x: 111, y: 144},
+    {x: 174, y: 260},
+    {x: 195, y: 542},
+    {x: 251, y: 496},
+    {x: 268, y: 490},
+    {x: 576, y: 440},
+    {x: 632, y: 695},
+    {x: 1099, y: 450},
+    {x: 1150, y: 206},
+    {x: 1439, y: 206}  // Fin du chemin
 ];
 
-// Classe Tour
+// Dimensions de la map originale
+const MAP_WIDTH = 1440;
+const MAP_HEIGHT = 720;
+
+// État du jeu
+let gameState = {
+    money: 100,
+    coreHealth: 100,
+    currentWave: 0,
+    isPlaying: false,
+    isGameOver: false,
+    selectedUnit: null
+};
+
+// Images
+const images = {};
+function loadImages() {
+    return new Promise((resolve) => {
+        const imageSources = {
+            map: 'assets/map.png',
+            slime: 'assets/slime.png',
+            proletaire: 'assets/prolétaire.png',
+            projectile: 'assets/projectile.png',
+            billet: 'assets/billet.png'
+        };
+        
+        let loadedCount = 0;
+        const totalImages = Object.keys(imageSources).length;
+        
+        for (const [key, src] of Object.entries(imageSources)) {
+            const img = new Image();
+            img.src = src;
+            img.onload = () => {
+                loadedCount++;
+                if (loadedCount === totalImages) {
+                    resolve();
+                }
+            };
+            images[key] = img;
+        }
+    });
+}
+
+// Adapter le canvas à l'espace disponible (75% de la largeur de l'écran)
+function resizeCanvas() {
+    const containerWidth = window.innerWidth * 0.75;
+    const containerHeight = window.innerHeight;
+    
+    // Calculer le ratio pour garder les proportions de la map
+    const scaleX = containerWidth / MAP_WIDTH;
+    const scaleY = containerHeight / MAP_HEIGHT;
+    const scale = Math.min(scaleX, scaleY);
+    
+    canvas.width = MAP_WIDTH * scale;
+    canvas.height = MAP_HEIGHT * scale;
+    
+    return scale;
+}
+
+let currentScale = 1;
+
+// Classes du jeu
+class Enemy {
+    constructor(wave) {
+        this.waypointIndex = 0;
+        this.x = waypoints[0].x;
+        this.y = waypoints[0].y;
+        this.speed = 1.5 + (wave * 0.1);
+        this.maxHealth = 5;
+        this.health = this.maxHealth;
+        this.damage = 1;
+        this.size = 30;
+        this.reachedEnd = false;
+    }
+    
+    update() {
+        if (this.waypointIndex >= waypoints.length - 1) {
+            this.reachedEnd = true;
+            return;
+        }
+        
+        const target = waypoints[this.waypointIndex + 1];
+        const dx = target.x - this.x;
+        const dy = target.y - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < this.speed) {
+            this.x = target.x;
+            this.y = target.y;
+            this.waypointIndex++;
+        } else {
+            this.x += (dx / distance) * this.speed;
+            this.y += (dy / distance) * this.speed;
+        }
+    }
+    
+    draw(ctx, scale) {
+        const screenX = this.x * scale;
+        const screenY = this.y * scale;
+        const screenSize = this.size * scale;
+        
+        // Dessiner le slime
+        ctx.drawImage(images.slime, screenX - screenSize/2, screenY - screenSize/2, screenSize, screenSize);
+        
+        // Barre de vie au-dessus de la tête
+        const barWidth = screenSize;
+        const barHeight = 5 * scale;
+        const barY = screenY - screenSize/2 - 10;
+        
+        // Fond de la barre
+        ctx.fillStyle = '#333';
+        ctx.fillRect(screenX - barWidth/2, barY, barWidth, barHeight);
+        
+        // Vie actuelle
+        const healthPercent = this.health / this.maxHealth;
+        ctx.fillStyle = healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffff00' : '#ff0000';
+        ctx.fillRect(screenX - barWidth/2, barY, barWidth * healthPercent, barHeight);
+    }
+    
+    takeDamage(amount) {
+        this.health -= amount;
+        return this.health <= 0;
+    }
+}
+
 class Tower {
     constructor(x, y) {
         this.x = x;
         this.y = y;
         this.range = 150;
-        this.damage = 2;
-        this.attackSpeed = 1000; // ms entre les attaques
-        this.lastAttack = 0;
-        this.target = null;
+        this.damage = 10;
+        this.attackSpeed = 1; // attaques par seconde
+        this.lastAttackTime = 0;
         this.angle = 0;
+        this.target = null;
+        this.projectiles = [];
     }
-
-    draw() {
+    
+    update(enemies, currentTime) {
+        // Trouver la cible la plus proche
+        this.target = null;
+        let minDistance = Infinity;
+        
+        for (const enemy of enemies) {
+            const dx = enemy.x - this.x;
+            const dy = enemy.y - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance <= this.range && distance < minDistance) {
+                minDistance = distance;
+                this.target = enemy;
+            }
+        }
+        
+        // Mettre à jour l'angle vers la cible
+        if (this.target) {
+            const dx = this.target.x - this.x;
+            const dy = this.target.y - this.y;
+            this.angle = Math.atan2(dy, dx);
+            
+            // Attaquer si le cooldown est écoulé
+            if (currentTime - this.lastAttackTime >= 1000 / this.attackSpeed) {
+                this.shoot();
+                this.lastAttackTime = currentTime;
+            }
+        }
+        
+        // Mettre à jour les projectiles
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            const proj = this.projectiles[i];
+            proj.update();
+            
+            if (proj.hit) {
+                this.projectiles.splice(i, 1);
+            }
+        }
+    }
+    
+    shoot() {
+        if (this.target) {
+            this.projectiles.push(new Projectile(this.x, this.y, this.target, this.damage));
+        }
+    }
+    
+    draw(ctx, scale) {
+        const screenX = this.x * scale;
+        const screenY = this.y * scale;
+        const size = 40 * scale;
+        
         ctx.save();
-        ctx.translate(this.x, this.y);
+        ctx.translate(screenX, screenY);
         ctx.rotate(this.angle);
         
         // Dessiner la tour
-        const imgSize = 50;
-        ctx.drawImage(assets.proletaire, -imgSize/2, -imgSize/2, imgSize, imgSize);
+        ctx.drawImage(images.proletaire, -size/2, -size/2, size, size);
         
         ctx.restore();
         
-        // Cercle de portée (seulement si survolé)
-        if (this === hoveredTower) {
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.range, 0, Math.PI * 2);
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-            ctx.lineWidth = 2;
-            ctx.stroke();
+        // Dessiner les projectiles
+        for (const proj of this.projectiles) {
+            proj.draw(ctx, scale);
         }
     }
-
-    update(enemies, currentTime) {
-        // Trouver la cible la plus proche
-        let closestEnemy = null;
-        let closestDist = Infinity;
-
-        for (const enemy of enemies) {
-            const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
-            if (dist <= this.range && dist < closestDist) {
-                closestDist = dist;
-                closestEnemy = enemy;
-            }
-        }
-
-        this.target = closestEnemy;
-
-        if (this.target) {
-            // Calculer l'angle vers la cible
-            this.angle = Math.atan2(this.target.y - this.y, this.target.x - this.x);
-
-            // Attaquer
-            if (currentTime - this.lastAttack >= this.attackSpeed) {
-                this.attack();
-                this.lastAttack = currentTime;
-            }
-        }
-    }
-
-    attack() {
-        if (this.target) {
-            this.target.hp -= this.damage;
-            // Animation de projectile pourrait être ajoutée ici
-        }
+    
+    drawRange(ctx, scale) {
+        const screenX = this.x * scale;
+        const screenY = this.y * scale;
+        const screenRange = this.range * scale;
+        
+        ctx.beginPath();
+        ctx.arc(screenX, screenY, screenRange, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
     }
 }
 
-// Classe Ennemi (Slime)
-class Enemy {
-    constructor() {
-        this.pathIndex = 0;
-        this.x = enemyPath[0].x;
-        this.y = enemyPath[0].y;
-        this.speed = 1.5;
-        this.hp = 5;
-        this.maxHp = 5;
-        this.damage = 1;
-        this.size = 40;
-        this.reachedEnd = false;
+class Projectile {
+    constructor(x, y, target, damage) {
+        this.x = x;
+        this.y = y;
+        this.target = target;
+        this.damage = damage;
+        this.speed = 8;
+        this.size = 10;
+        this.hit = false;
     }
-
+    
     update() {
-        if (this.reachedEnd) return;
-
-        const target = enemyPath[this.pathIndex + 1];
-        if (!target) {
-            this.reachedEnd = true;
-            gameState.playerHP -= this.damage;
-            updateLifeBar();
+        if (!this.target || this.target.health <= 0) {
+            this.hit = true;
             return;
         }
-
-        const dx = target.x - this.x;
-        const dy = target.y - this.y;
-        const dist = Math.hypot(dx, dy);
-
-        if (dist < this.speed) {
-            this.x = target.x;
-            this.y = target.y;
-            this.pathIndex++;
+        
+        const dx = this.target.x - this.x;
+        const dy = this.target.y - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < this.speed) {
+            // Toucher la cible
+            const killed = this.target.takeDamage(this.damage);
+            if (killed) {
+                gameState.money += 5; // Reward pour avoir tué un ennemi
+                updateMoneyDisplay();
+            }
+            this.hit = true;
         } else {
-            this.x += (dx / dist) * this.speed;
-            this.y += (dy / dist) * this.speed;
+            this.x += (dx / distance) * this.speed;
+            this.y += (dy / distance) * this.speed;
         }
     }
-
-    draw() {
-        // Dessiner le slime
-        ctx.drawImage(assets.slime, this.x - this.size/2, this.y - this.size/2, this.size, this.size);
-
-        // Barre de vie au-dessus de la tête
-        const barWidth = 30;
-        const barHeight = 5;
-        const hpPercent = this.hp / this.maxHp;
-
-        ctx.fillStyle = '#333';
-        ctx.fillRect(this.x - barWidth/2, this.y - this.size/2 - 10, barWidth, barHeight);
+    
+    draw(ctx, scale) {
+        const screenX = this.x * scale;
+        const screenY = this.y * scale;
+        const screenSize = this.size * scale;
         
-        ctx.fillStyle = hpPercent > 0.5 ? '#00FF00' : hpPercent > 0.25 ? '#FFFF00' : '#FF0000';
-        ctx.fillRect(this.x - barWidth/2, this.y - this.size/2 - 10, barWidth * hpPercent, barHeight);
+        ctx.drawImage(images.projectile, screenX - screenSize/2, screenY - screenSize/2, screenSize, screenSize);
     }
 }
 
-// Variables de jeu
-const towers = [];
-const enemies = [];
-let hoveredTower = null;
-let enemySpawnTimer = 0;
-let enemiesToSpawn = 5;
+// Variables globales
+let towers = [];
+let enemies = [];
 let waveInProgress = false;
+let enemiesToSpawn = 0;
+let spawnTimer = 0;
+let spawnInterval = 60; // frames entre chaque spawn
 
-// Gestion de la souris
-let mouseX = 0;
-let mouseY = 0;
-let canPlaceTower = false;
+// Gestion des vagues
+function startWave() {
+    if (waveInProgress) return;
+    
+    gameState.currentWave++;
+    waveInProgress = true;
+    enemiesToSpawn = 5 + Math.floor(gameState.currentWave * 1.5);
+    spawnTimer = 0;
+    
+    console.log(`Vague ${gameState.currentWave} commencée - ${enemiesToSpawn} ennemis`);
+}
 
-canvas.addEventListener('mousemove', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    mouseX = e.clientX - rect.left;
-    mouseY = e.clientY - rect.top;
+function updateWave() {
+    if (!waveInProgress) return;
+    
+    if (enemiesToSpawn > 0) {
+        spawnTimer++;
+        if (spawnTimer >= spawnInterval) {
+            enemies.push(new Enemy(gameState.currentWave));
+            enemiesToSpawn--;
+            spawnTimer = 0;
+        }
+    } else if (enemies.length === 0) {
+        waveInProgress = false;
+        console.log(`Vague ${gameState.currentWave} terminée!`);
+        
+        // Prochaine vague automatique après un délai
+        setTimeout(() => {
+            if (!gameState.isGameOver && gameState.coreHealth > 0) {
+                startWave();
+            }
+        }, 2000);
+    }
+}
 
-    // Vérifier si on survole une tour
-    hoveredTower = null;
-    for (const tower of towers) {
-        const dist = Math.hypot(mouseX - tower.x, mouseY - tower.y);
-        if (dist < 30) {
-            hoveredTower = tower;
-            break;
+// Vérifier si une position est sur l'eau
+function isOnWater(x, y) {
+    // Coordonnées approximatives des zones d'eau basées sur l'analyse de la map
+    // Zone d'eau principale: x > 269, y > 233
+    if (x > 269 && y > 233) {
+        // Vérifier plus précisément
+        if (y < 709 && x < 1428) {
+            return true;
         }
     }
-});
+    return false;
+}
 
-canvas.addEventListener('click', (e) => {
-    if (gameState.selectedTower && canPlaceTower) {
-        placeTower(mouseX, mouseY);
+// Vérifier si une position est sur le chemin
+function isOnPath(x, y) {
+    // Vérifier la distance par rapport aux segments du chemin
+    for (let i = 0; i < waypoints.length - 1; i++) {
+        const p1 = waypoints[i];
+        const p2 = waypoints[i + 1];
+        
+        // Distance point-segment
+        const dist = pointToSegmentDistance(x, y, p1.x, p1.y, p2.x, p2.y);
+        if (dist < 30) { // Largeur du chemin
+            return true;
+        }
     }
-});
+    return false;
+}
 
-// Sélection de tour depuis le menu
-document.getElementById('tower-slot').addEventListener('click', function() {
-    if (gameState.selectedTower === 'proletaire') {
-        gameState.selectedTower = null;
-        this.classList.remove('selected');
+function pointToSegmentDistance(px, py, x1, y1, x2, y2) {
+    const A = px - x1;
+    const B = py - y1;
+    const C = x2 - x1;
+    const D = y2 - y1;
+    
+    const dot = A * C + B * D;
+    const lenSq = C * C + D * D;
+    let param = -1;
+    
+    if (lenSq !== 0) {
+        param = dot / lenSq;
+    }
+    
+    let xx, yy;
+    
+    if (param < 0) {
+        xx = x1;
+        yy = y1;
+    } else if (param > 1) {
+        xx = x2;
+        yy = y2;
     } else {
-        gameState.selectedTower = 'proletaire';
-        document.querySelectorAll('.tower-slot').forEach(slot => slot.classList.remove('selected'));
-        this.classList.add('selected');
+        xx = x1 + param * C;
+        yy = y1 + param * D;
     }
-});
+    
+    const dx = px - xx;
+    const dy = py - yy;
+    
+    return Math.sqrt(dx * dx + dy * dy);
+}
 
-function placeTower(x, y) {
-    // Vérifier si on peut placer ici (pas sur le chemin, pas sur une autre tour)
-    if (!isValidPlacement(x, y)) {
-        canPlaceTower = false;
+// Placer une tour
+function placeTower(canvasX, canvasY) {
+    if (!gameState.selectedUnit) return;
+    
+    const worldX = canvasX / currentScale;
+    const worldY = canvasY / currentScale;
+    
+    // Vérifier si on peut placer ici
+    if (isOnWater(worldX, worldY)) {
+        console.log("Cannot build on water!");
         return;
     }
-
-    const cost = 50;
-    if (gameState.money >= cost) {
-        gameState.money -= cost;
-        towers.push(new Tower(x, y));
-        updateMoneyDisplay();
-        gameState.selectedTower = null;
-        document.getElementById('tower-slot').classList.remove('selected');
-        canPlaceTower = false;
+    
+    if (isOnPath(worldX, worldY)) {
+        console.log("Cannot build on path!");
+        return;
     }
-}
-
-function isValidPlacement(x, y) {
-    // Vérifier la distance avec les autres tours
+    
+    // Vérifier si on a assez d'argent
+    const unitCost = 50;
+    if (gameState.money < unitCost) {
+        console.log("Not enough money!");
+        return;
+    }
+    
+    // Vérifier s'il y a déjà une tour ici
     for (const tower of towers) {
-        const dist = Math.hypot(x - tower.x, y - tower.y);
-        if (dist < 60) return false;
+        const dx = tower.x - worldX;
+        const dy = tower.y - worldY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 40) {
+            console.log("Already a tower here!");
+            return;
+        }
     }
-
-    // Vérifier si sur le chemin (simplifié)
-    // Dans un vrai jeu, il faudrait vérifier plus précisément
-    return true;
+    
+    // Placer la tour
+    towers.push(new Tower(worldX, worldY));
+    gameState.money -= unitCost;
+    updateMoneyDisplay();
+    
+    // Désélectionner l'unité
+    gameState.selectedUnit = null;
+    document.querySelectorAll('.unit-slot').forEach(slot => slot.classList.remove('selected'));
 }
 
-// Mise à jour des affichages HUD
+// Mettre à jour l'affichage de la monnaie
 function updateMoneyDisplay() {
     document.getElementById('money-amount').textContent = gameState.money;
 }
 
-function updateLifeBar() {
-    document.getElementById('player-hp').textContent = Math.max(0, gameState.playerHP);
+// Mettre à jour la barre de vie du noyau
+function updateCoreHealth() {
+    const fill = document.getElementById('core-health-fill');
+    const text = document.getElementById('core-health-text');
+    const percent = (gameState.coreHealth / 100) * 100;
     
-    if (gameState.playerHP <= 0) {
+    fill.style.width = percent + '%';
+    text.textContent = `${gameState.coreHealth} / 100`;
+    
+    if (gameState.coreHealth <= 0) {
         gameOver();
     }
 }
 
-// Démarrage du jeu
-document.getElementById('btn-jouer').addEventListener('click', () => {
-    document.getElementById('main-menu').style.display = 'none';
-    document.getElementById('game-container').style.display = 'block';
-    gameState.isPlaying = true;
-    gameState.money = 150;
-    gameState.playerHP = 100;
-    updateMoneyDisplay();
-    startWave();
-    gameLoop();
-});
-
-function startWave() {
-    waveInProgress = true;
-    enemiesToSpawn = 5 + gameState.wave * 2;
-    enemySpawnTimer = 0;
-}
-
+// Game Over
 function gameOver() {
+    gameState.isGameOver = true;
     gameState.isPlaying = false;
-    alert('Game Over! Vague atteinte: ' + gameState.wave);
-    location.reload();
+    document.getElementById('final-wave').textContent = `Vague atteinte: ${gameState.currentWave}`;
+    document.getElementById('game-over-screen').style.display = 'flex';
 }
 
-// Boucle de jeu principale
-function gameLoop(currentTime = 0) {
-    if (!gameState.isPlaying) return;
-
-    // Effacer le canvas
+// Boucle de jeu
+let lastTime = 0;
+function gameLoop(currentTime) {
+    if (!gameState.isPlaying || gameState.isGameOver) {
+        requestAnimationFrame(gameLoop);
+        return;
+    }
+    
+    const deltaTime = currentTime - lastTime;
+    lastTime = currentTime;
+    
+    // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Dessiner la map en plein écran
-    ctx.drawImage(assets.map, 0, 0, canvas.width, canvas.height);
-
+    
+    // Dessiner la map
+    ctx.drawImage(images.map, 0, 0, canvas.width, canvas.height);
+    
     // Mettre à jour et dessiner les tours
     for (const tower of towers) {
         tower.update(enemies, currentTime);
-        tower.draw();
+        tower.draw(ctx, currentScale);
     }
-
-    // Spawner les ennemis
-    if (waveInProgress && enemiesToSpawn > 0) {
-        enemySpawnTimer++;
-        if (enemySpawnTimer > 60) { // Spawn toutes les 60 frames (~1 seconde)
-            enemies.push(new Enemy());
-            enemiesToSpawn--;
-            enemySpawnTimer = 0;
-        }
-    } else if (waveInProgress && enemiesToSpawn === 0 && enemies.length === 0) {
-        // Vague terminée
-        waveInProgress = false;
-        gameState.wave++;
-        gameState.money += 50; // Bonus de fin de vague
-        updateMoneyDisplay();
-        setTimeout(startWave, 2000); // Nouvelle vague après 2 secondes
-    }
-
+    
+    // Mettre à jour la vague
+    updateWave();
+    
     // Mettre à jour et dessiner les ennemis
     for (let i = enemies.length - 1; i >= 0; i--) {
         const enemy = enemies[i];
         enemy.update();
-        enemy.draw();
-
-        // Supprimer les ennemis morts
-        if (enemy.hp <= 0) {
-            gameState.money += 10; // Reward pour avoir tué un ennemi
-            updateMoneyDisplay();
-            enemies.splice(i, 1);
-            gameState.enemiesKilled++;
-        }
-
-        // Supprimer les ennemis qui ont atteint la fin
+        
         if (enemy.reachedEnd) {
+            // Ennemi atteint la fin - infliger des dégâts au noyau
+            gameState.coreHealth -= enemy.damage;
+            updateCoreHealth();
             enemies.splice(i, 1);
+        } else {
+            enemy.draw(ctx, currentScale);
         }
     }
-
-    // Dessiner la zone de placement si une tour est sélectionnée
-    if (gameState.selectedTower) {
-        canPlaceTower = isValidPlacement(mouseX, mouseY);
-        
-        ctx.beginPath();
-        ctx.arc(mouseX, mouseY, 150, 0, Math.PI * 2);
-        ctx.strokeStyle = canPlaceTower ? 'rgba(0, 255, 0, 0.5)' : 'rgba(255, 0, 0, 0.5)';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        
-        ctx.drawImage(assets.proletaire, mouseX - 25, mouseY - 25, 50, 50);
-    }
-
+    
     requestAnimationFrame(gameLoop);
 }
+
+// Initialisation
+async function init() {
+    await loadImages();
+    currentScale = resizeCanvas();
+    
+    // Event listeners
+    document.getElementById('play-btn').addEventListener('click', () => {
+        document.getElementById('main-menu').style.display = 'none';
+        document.getElementById('game-container').style.display = 'block';
+        gameState.isPlaying = true;
+        startWave();
+        gameLoop(0);
+    });
+    
+    document.getElementById('restart-btn').addEventListener('click', () => {
+        location.reload();
+    });
+    
+    // Sélection d'unité
+    document.querySelectorAll('.unit-slot').forEach(slot => {
+        slot.addEventListener('click', () => {
+            const unitType = slot.dataset.unit;
+            
+            // Désélectionner toutes les unités
+            document.querySelectorAll('.unit-slot').forEach(s => s.classList.remove('selected'));
+            
+            if (gameState.selectedUnit === unitType) {
+                // Désélectionner si déjà sélectionné
+                gameState.selectedUnit = null;
+                document.getElementById('unit-info-panel').style.display = 'none';
+            } else {
+                // Sélectionner l'unité
+                slot.classList.add('selected');
+                gameState.selectedUnit = unitType;
+                
+                // Afficher les infos
+                document.getElementById('unit-info-panel').style.display = 'block';
+            }
+        });
+    });
+    
+    // Placement de tour au clic sur le canvas
+    canvas.addEventListener('click', (e) => {
+        if (gameState.selectedUnit) {
+            const rect = canvas.getBoundingClientRect();
+            const canvasX = e.clientX - rect.left;
+            const canvasY = e.clientY - rect.top;
+            placeTower(canvasX, canvasY);
+        }
+    });
+    
+    // Gérer le redimensionnement
+    window.addEventListener('resize', () => {
+        currentScale = resizeCanvas();
+    });
+}
+
+// Démarrer le jeu
+init();
