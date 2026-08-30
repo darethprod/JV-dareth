@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title>THE MAD — Local Survivors</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main id="app">
+    <section id="screen-character" class="screen active">
+      <div class="panel character-panel">
+        <h1>CHAMPION SELECT</h1>
+        <p class="hint">1–4 PLAYERS · KEYBOARD / GAMEPAD</p>
+        <div class="champion-row">
+          <button id="champion-card" class="champion-card selected" type="button">
+            <div class="sprite-frame"><img id="champion-preview" alt="The Mad"></div>
+            <strong>THE MAD</strong>
+          </button>
+        </div>
+        <div id="player-slots" class="player-slots"></div>
+        <button id="start-btn" class="primary" type="button">START</button>
+      </div>
+    </section>
+
+    <section id="screen-game" class="screen">
+      <canvas id="game" aria-label="game"></canvas>
+      <div id="hud" class="hud">
+        <div class="topbar">
+          <div id="wave">WAVE 1/10</div>
+          <div id="timer">01:00</div>
+          <div id="alive">ENEMIES 0</div>
+        </div>
+        <div id="player-hud" class="player-hud"></div>
+      </div>
+    </section>
+
+    <section id="screen-upgrade" class="screen overlay-screen">
+      <div class="panel upgrade-panel">
+        <div class="upgrade-head">
+          <h2>WAVE COMPLETE</h2>
+          <p>CHOOSE 1 STAT</p>
+          <div class="tabs"><span id="tab-wave" class="tab active">WAVE BONUS</span><span id="tab-character" class="tab">CHARACTER</span></div>
+        </div>
+        <div id="upgrade-grid" class="upgrade-grid"></div>
+        <p class="controller-hint">LB / RB · CHANGE TAB</p>
+      </div>
+    </section>
+
+    <section id="screen-win" class="screen overlay-screen"><div class="panel result"><h1>VICTORY</h1><p>10 WAVES CLEARED</p><button id="again-win" class="primary">PLAY AGAIN</button></div></section>
+    <section id="screen-lose" class="screen overlay-screen"><div class="panel result"><h1>DEFEAT</h1><p id="lose-text">THE MAD FELL.</p><button id="again-lose" class="primary">PLAY AGAIN</button></div></section>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>
