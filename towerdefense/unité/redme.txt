@@ -1,6 +1,0 @@
-les unité doivent ce tourner vers la cible donc regardé la cible qu'ils attaque 
-ensuite il doivent etre possable sur la map sous forme de glissé deposé comme bloons td ou la portée y ai afficher qquand on clique dessus 
-quand on clique sur l'inuté des information doivent y appraitre comme son passif mais aussi ses stat mais aussi ca description ect bref 
-attention les unité ne doivent pas etre possable sur les poitns d'eau
-les mobs doivent bien suivre le chemin de la map donc calcule bien ca 
-les wave doivent aller jusqua 20 pour l'instant de + en + dur avec qu'un seul trash mob pour l'instant le slime 
