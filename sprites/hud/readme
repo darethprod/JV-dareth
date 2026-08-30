@@ -1,1 +1,3 @@
-
+le menu de selection des champion dans les peit carré doit etre placé le sprite du champion en premiere place ca il n'y a qu'un champion et dans les gros carré ca doit etre ca descritpion le premier gros carré c'est pour le joeueur et ainsi de suite
+le menu entre les vagues c'est la ou l'on pas pouvoir choisir ses stats bonus donc entre chaque manche on peut choisir une stat entre toute celle qui existe une fois donc le premier gros carré c'est le joueur 1 et ainsi de suite je veut que si on appui sur rb ou lb avec la manette on change d'onglet on passe de selection de stat de la manche a stat de ton personnage et sprite
+ensuite tout les logo dans stat c'est les logo des stats donc au lieu d'ecrire damage juste tu met le logo les damage ainsi de suite
